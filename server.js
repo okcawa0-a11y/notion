@@ -22,6 +22,7 @@ let fileCache = { data: null, timestamp: 0 };
 let contentCache = {};
 const CACHE_TTL = 30 * 1000;
 
+// Helper: Ambil manifes urutan folder dari Google Drive
 async function getSavedFolderOrder() {
     try {
         const res = await drive.files.list({
@@ -82,6 +83,7 @@ app.get('/api/pages/:id', async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// Endpoint Simpan Urutan Posisi Folder Permanen
 app.post('/api/folders/reorder', async (req, res) => {
     try {
         const { order } = req.body;
@@ -125,7 +127,7 @@ app.get('/api/search', async (req, res) => {
         const results = [];
 
         await Promise.all(files.map(async (file) => {
-            const cleanFolderName = file.name.replace('.json', '').replace(/-/g, ' ');
+            const cleanFolderName = file.name.replace(/\.json$/i, '');
 
             if (cleanFolderName.toLowerCase().includes(query)) {
                 results.push({
@@ -195,12 +197,13 @@ app.post('/api/pages', async (req, res) => {
             const currentFile = await drive.files.get({ fileId: id, fields: 'name' });
             targetFileName = currentFile.data.name;
         } else {
-            const cleanTitle = title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : 'untitled-folder';
-            targetFileName = `${cleanTitle}.json`;
+            // Support Full CAPSLOCK, Simbol, Tanda Kurung, Angka & Ganti slash dengan full-width slash agar aman
+            const safeTitle = (title || 'Untitled Folder').trim().replace(/[\/\\]/g, '／');
+            targetFileName = `${safeTitle}.json`;
         }
 
         const fileMetadata = { name: targetFileName, mimeType: 'application/json' };
-        const payloadData = { title, pages, updated_at: new Date().toISOString() };
+        const payloadData = { title: (title || 'Untitled Folder').trim(), pages, updated_at: new Date().toISOString() };
         const media = {
             mimeType: 'application/json',
             body: JSON.stringify(payloadData, null, 2),
@@ -223,12 +226,12 @@ app.post('/api/pages', async (req, res) => {
 app.put('/api/pages/:id/rename', async (req, res) => {
     try {
         const { title } = req.body;
-        const cleanTitle = title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : 'untitled-folder';
-        const fileName = `${cleanTitle}.json`;
+        const safeTitle = (title || 'Untitled Folder').trim().replace(/[\/\\]/g, '／');
+        const fileName = `${safeTitle}.json`;
         
         const file = await drive.files.get({ fileId: req.params.id, alt: 'media' });
         let content = file.data;
-        content.title = title;
+        content.title = (title || 'Untitled Folder').trim();
 
         await drive.files.update({ 
             fileId: req.params.id, 
@@ -366,7 +369,7 @@ app.get('/', (req, res) => {
                     <div class="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center font-bold text-blue-400 text-xs shadow-inner">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
                     </div>
-                    <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">Folder</span>
+                    <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">Materi Folder</span>
                 </div>
                 <div class="flex items-center gap-1">
                     <button id="new-folder-btn" onclick="createNewFolder()" class="text-[11px] bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded-lg transition font-medium hidden flex items-center gap-1 shadow-sm">+ Folder</button>
@@ -498,7 +501,7 @@ app.get('/', (req, res) => {
     <!-- TOAST NOTIFICATION -->
     <div id="toast" class="fixed top-18 right-6 bg-slate-900 border border-slate-750 text-white text-xs px-4 py-3 rounded-xl shadow-2xl transform translate-x-full opacity-0 transition-all duration-300 z-50 font-medium"></div>
 
-    <!-- CUSTOM CENTER POPUP MODAL UI (PENGGANTI PROMPT & CONFIRM BROWSER) -->
+    <!-- CUSTOM CENTER POPUP MODAL UI -->
     <div id="custom-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
         <div id="custom-modal-card" class="bg-slate-900 border border-slate-800 w-full max-w-sm sm:max-w-md rounded-2xl p-5 sm:p-6 shadow-2xl transform scale-95 transition-transform duration-200">
             <div class="flex items-center gap-3 mb-4">
@@ -549,7 +552,6 @@ app.get('/', (req, res) => {
             }
         });
 
-        // ================= CUSTOM POPUP MODAL ENGINE =================
         function showCustomDialog({ title, desc = '', placeholder = '', defaultValue = '', isPrompt = true, isPassword = false, isDanger = false, confirmText = 'Simpan' }) {
             return new Promise((resolve) => {
                 const modal = document.getElementById('custom-modal');
@@ -591,7 +593,6 @@ app.get('/', (req, res) => {
                     inputWrap.classList.add('hidden');
                 }
 
-                // Show Animation
                 modal.classList.remove('hidden');
                 setTimeout(() => {
                     modal.classList.remove('opacity-0');
@@ -798,8 +799,8 @@ app.get('/', (req, res) => {
         async function createNewFolder() {
             const title = await showCustomDialog({
                 title: 'Buat Modul Folder Baru',
-                desc: 'Masukkan nama folder materi baru yang ingin ditambahkan.',
-                placeholder: 'e.g. Routing Static, VLAN, Firewall...',
+                desc: 'Masukkan nama folder materi baru (Mendukung CAPSLOCK, angka, simbol & slash).',
+                placeholder: 'e.g. 1) STRUKTUR 7 LAYER OSI / TCP-UDP...',
                 isPrompt: true,
                 confirmText: 'Buat Modul'
             });
@@ -909,7 +910,8 @@ app.get('/', (req, res) => {
             if(folders.length === 0) { listEl.innerHTML = '<p class="text-xs text-slate-500 p-4 text-center">Belum ada modul materi.</p>'; return; }
             
             folders.forEach((file) => {
-                const cleanName = file.name.replace('.json', '').replace(/-/g, ' ');
+                // Pertahankan nama asli file (CAPSLOCK, angka, tanda kurung, simbol)
+                const cleanName = file.name.replace(/\.json$/i, '');
                 const isActive = currentFolderId === file.id;
                 
                 const div = document.createElement('div');
@@ -924,7 +926,7 @@ app.get('/', (req, res) => {
                 btnContent.className = "flex-1 text-left truncate flex items-center gap-2.5 outline-none";
                 btnContent.innerHTML = \`
                     <svg class="w-4 h-4 shrink-0 pointer-events-none \${isActive ? 'text-blue-400' : 'text-slate-400'}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
-                    <span class="truncate capitalize text-slate-200 group-hover:text-white pointer-events-none">\${cleanName}</span>
+                    <span class="truncate text-slate-200 group-hover:text-white pointer-events-none">\${cleanName}</span>
                 \`;
                 btnContent.onclick = () => { 
                     loadFolderContent(file.id, 0); 
@@ -1336,7 +1338,7 @@ app.get('/', (req, res) => {
                                 <div class="flex items-center gap-3 truncate">
                                     \${iconSvg}
                                     <div class="truncate">
-                                        <div class="text-xs text-slate-200 group-hover:text-white font-semibold truncate capitalize">\${escapeHtml(item.title)}</div>
+                                        <div class="text-xs text-slate-200 group-hover:text-white font-semibold truncate">\${escapeHtml(item.title)}</div>
                                         <div class="text-[11px] text-slate-500 group-hover:text-slate-400 truncate mt-0.5">\${escapeHtml(item.subtext)}</div>
                                     </div>
                                 </div>
