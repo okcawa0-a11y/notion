@@ -1196,17 +1196,17 @@
             <div class="overflow-x-auto w-full">
               <table class="w-full text-xs text-left border-collapse min-w-[380px]">
                 <thead class="bg-[#202020] text-[#999] border-b border-[#282828]">
-                  <tr>
-                    ${headers.map(h => `<th contenteditable="${isAuthorMode}" class="p-2.5 font-semibold outline-none border-r border-[#262626] last:border-r-0" data-placeholder="Nama Kolom">${h}</th>`).join('')}
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-[#242424] text-[#d4d4d4]">
-                  ${rows.map(r => `
-                    <tr>
-                      ${r.map(cell => `<td contenteditable="${isAuthorMode}" class="p-2.5 outline-none border-r border-[#242424] last:border-r-0" data-placeholder="Ketik data...">${cell}</td>`).join('')}
-                    </tr>
-                  `).join('')}
-                </tbody>
+  <tr>
+    ${headers.map(h => `<th contenteditable="${isAuthorMode ? 'true' : 'false'}" class="p-2.5 outline-none border-r border-[#262626]">${h}</th>`).join('')}
+  </tr>
+</thead>
+<tbody class="divide-y divide-[#242424] text-[#d4d4d4]">
+  ${rows.map(r => `
+    <tr>
+      ${r.map(c => `<td contenteditable="${isAuthorMode ? 'true' : 'false'}" class="p-2.5 outline-none border-r border-[#242424]">${c}</td>`).join('')}
+    </tr>
+  `).join('')}
+</tbody>
               </table>
             </div>
           `;
@@ -1416,14 +1416,14 @@
       }
     }
 
-    function createEditableEl(tag, classes, placeholder, content) {
-      const el = document.createElement(tag);
-      el.className = classes;
-      el.contentEditable = isAuthorMode;
-      el.setAttribute('data-placeholder', placeholder);
-      el.innerHTML = content || '';
-      return el;
-    }
+  function createEditableEl(tag, classes, placeholder, content) {
+  const el = document.createElement(tag);
+  el.className = classes;
+  el.contentEditable = isAuthorMode ? 'true' : 'false'; // Diubah menjadi string eksplisit
+  el.setAttribute('data-placeholder', placeholder);
+  el.innerHTML = content || '';
+  return el;
+}
 
     function attachInputEvents(el) {
       el.addEventListener('input', () => {
@@ -2254,9 +2254,12 @@
 
 function highlightKeyword(text, keyword) {
       if (!text || !keyword) return text;
-      const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-      // Gaya pill transparan halus ala Notion (tanpa border kotak kaku)
-      return text.replace(regex, '<span class="bg-[#3e3e3a] text-gray-100 px-1 rounded">$1</span>');
+      // Escape karakter khusus regex agar aman
+      const escapedQuery = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escapedQuery})`, 'gi');
+      
+      // Mengembalikan teks asli tanpa membungkus per huruf, cukup cetak tebal tipis elegan
+      return text.replace(regex, '<span class="text-white font-semibold">$1</span>');
     }
 
   function extractSnippet(fullText, keyword) {
