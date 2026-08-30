@@ -246,7 +246,7 @@
           <i class="fa-solid fa-shield-halved"></i>
         </div>
         <h3 class="text-base font-bold text-white">Login</h3>
-        <p class="text-xs text-[#777] mt-1">Masukkan password admin untuk mengedit materi.</p>
+        <p class="text-xs text-[#777] mt-1">Masukkan password</p>
       </div>
 
       <form onsubmit="submitAdminLogin(event)" class="space-y-4">
@@ -577,7 +577,7 @@
       } else {
         container.innerHTML = `
           <button onclick="openLoginModal()" class="text-xs bg-emerald-600/90 hover:bg-emerald-500 text-white font-medium px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition shadow">
-            <i class="fa-solid fa-key text-[10px]"></i> <span>Login Admin</span>
+            <i class="fa-solid fa-key text-[10px]"></i> <span></span>
           </button>
         `;
         if (btnNewDoc) btnNewDoc.classList.add('hidden');
