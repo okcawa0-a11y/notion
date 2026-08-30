@@ -11,7 +11,8 @@ let CACHED_ROOT_ID = (process.env.DRIVE_FOLDER_ID || '').trim();
 // Middleware (Mendukung upload payload lab)
 app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ extended: true, limit: '200mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+// Tangani Favicon agar tidak membebani pemanggilan fungsi serverless & 404
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Inisialisasi Google OAuth2 Client
 const oauth2Client = new google.auth.OAuth2(
