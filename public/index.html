@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Notion</title>
-  
-  <!-- 1. Favicon SVG Elegan Logo 'N' (Menghilangkan Error 404 & Menurunkan Error Rate Vercel ke 0%) -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23191919'/><text x='50%' y='55%' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='Inter, sans-serif' font-size='56' font-weight='800'>N</text></svg>">
+ <title>Notion</title>
 
-  <!-- 2. Peredam Warning Tailwind CDN (Konsol Bersih Total) -->
-  <script>
-    const _origWarn = console.warn;
-    console.warn = function(...args) {
-      if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
-      _origWarn.apply(console, args);
-    };
-  </script>
+<!-- Favicon SVG Logo 'N' (Mencegah Error 404 & Error Rate Vercel) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23191919'/><text x='50%' y='55%' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='Inter, sans-serif' font-size='56' font-weight='800'>N</text></svg>">
+
+<!-- Peredam Warning Tailwind CDN -->
+<script>
+  const _origWarn = console.warn;
+  console.warn = function(...args) {
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+    _origWarn.apply(console, args);
+  };
+</script>
 
   <!-- Tailwind CSS & FontAwesome -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -441,17 +441,30 @@
     <img id="lightbox-img" src="" class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl">
   </div>
 
-  <div id="modal-search" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-start justify-center pt-16 sm:pt-20 p-4" onclick="closeSearchModal(event)">
-    <div class="bg-[#222222] border border-[#333] rounded-xl max-w-lg w-full p-3 shadow-2xl" onclick="event.stopPropagation()">
-      <div class="flex items-center gap-2 border-b border-[#333] pb-2 px-2">
-        <i class="fa-solid fa-magnifying-glass text-xs text-[#777]"></i>
-        <input id="input-global-search" type="text" placeholder="Cari materi, konfigurasi..." class="w-full bg-transparent text-sm text-white outline-none placeholder-[#555]">
-      </div>
-      <div id="search-results" class="mt-2 space-y-1 max-h-72 overflow-y-auto text-xs text-[#999]">
-        <div class="p-3 text-center text-[#555]">Ketik kata kunci pencarian...</div>
-      </div>
+  <div id="modal-search" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center pt-14 sm:pt-20 p-4" onclick="closeSearchModal(event)">
+  <div class="bg-[#202020] border border-[#333] rounded-2xl max-w-xl w-full p-4 shadow-2xl flex flex-col max-h-[80vh]" onclick="event.stopPropagation()">
+    <div class="flex items-center gap-3 border-b border-[#2d2d2d] pb-3 px-1">
+      <i id="search-spinner" class="fa-solid fa-magnifying-glass text-sm text-emerald-400"></i>
+      <input id="input-global-search" type="text" 
+             placeholder="Cari judul materi, Heading 1/2, atau ketik 'apa itu ip'..." 
+             oninput="handleSearchInput(this.value)"
+             class="w-full bg-transparent text-sm sm:text-base text-white outline-none placeholder-[#555]">
+      <button onclick="closeSearchModal()" class="text-xs text-[#777] hover:text-white px-1.5 py-0.5 rounded border border-[#333]">ESC</button>
+    </div>
+
+    <div class="flex items-center justify-between mt-2.5 px-1 text-[11px] text-[#777] select-none">
+      <label class="flex items-center gap-1.5 cursor-pointer hover:text-[#bbb]">
+        <input type="checkbox" id="chk-search-deep" checked onchange="handleSearchInput(document.getElementById('input-global-search').value)" class="rounded bg-[#181818] border-[#333] text-emerald-500 focus:ring-0">
+        <span>Cari seluruh teks materi (Deep Search)</span>
+      </label>
+      <span id="search-count-label">0 hasil</span>
+    </div>
+
+    <div id="search-results" class="mt-3 space-y-1.5 overflow-y-auto max-h-96 pr-1 divide-y divide-[#262626]">
+      <div class="p-6 text-center text-xs text-[#555]">Ketik kata kunci untuk mencari materi...</div>
     </div>
   </div>
+</div>
 
   <!-- ENGINE JAVASCRIPT LENGKAP -->
   <script>
@@ -495,13 +508,16 @@
     ];
 
     document.addEventListener('DOMContentLoaded', async () => {
-      await detectEnvironmentAndAuth();
-      await fetchFolders();
-      handleHashRouting();
-      window.addEventListener('hashchange', handleHashRouting);
-      setupGlobalEvents();
-      renderLucidePickerGrid(LUCIDE_ICONS);
-    });
+  await detectEnvironmentAndAuth();
+  await fetchFolders();
+  handleHashRouting();
+  window.addEventListener('hashchange', handleHashRouting);
+  setupGlobalEvents();
+  renderLucidePickerGrid(LUCIDE_ICONS);
+
+  // TAMBAHAN: Memulai pemindaian dokumen di latar belakang secara otomatis
+  buildSearchIndex();
+});
 
     // Helper: Header Request dengan Password Admin
     function getAuthHeaders() {
@@ -2046,13 +2062,230 @@
       }
     }
 
-    function openSearchModal() {
-      document.getElementById('modal-search').classList.remove('hidden');
-      document.getElementById('input-global-search').focus();
+    let searchIndexDocs = [];
+  let isIndexing = false;
+
+ async function openSearchModal() {
+  document.getElementById('modal-search').classList.remove('hidden');
+  const input = document.getElementById('input-global-search');
+  input.value = '';
+  input.focus();
+
+  const resultsContainer = document.getElementById('search-results');
+  if (isIndexing) {
+    resultsContainer.innerHTML = '<div class="p-6 text-center text-xs text-amber-400"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Sedang memindai materi dari Google Drive...</div>';
+  } else if (searchIndexDocs.length === 0) {
+    resultsContainer.innerHTML = '<div class="p-6 text-center text-xs text-[#555]">Ketik apa saja untuk mulai mencari...</div>';
+  } else {
+    resultsContainer.innerHTML = '<div class="p-6 text-center text-xs text-[#555]">Ketik kata kunci untuk mencari judul, Heading 1/2, atau isi teks...</div>';
+  }
+  document.getElementById('search-count-label').innerText = `${searchIndexDocs.length} dokumen di-index`;
+}
+
+  function closeSearchModal(e) {
+    if (e && e.target !== e.currentTarget && !e.target.closest('button')) return;
+    document.getElementById('modal-search').classList.add('hidden');
+  }
+
+ // 3. ULTRA-FAST PARALLEL INDEXING: Tarik semua isi dokumen secara bersamaan (Instan & Real-time)
+    async function buildSearchIndex() {
+      if (isIndexing || searchIndexDocs.length > 0) return;
+      isIndexing = true;
+      const spinner = document.getElementById('search-spinner');
+      if (spinner) spinner.className = 'fa-solid fa-spinner fa-spin text-sm text-emerald-400';
+
+      try {
+        if (allFolders.length === 0) await fetchFolders();
+        
+        // 1. Ambil daftar file dari seluruh folder secara paralel
+        const folderPromises = allFolders.map(folder => 
+          fetch(`/api/folders/${folder.id}/files`)
+            .then(r => r.ok ? r.json() : [])
+            .then(files => files.map(f => ({ ...f, folderName: folder.name })))
+            .catch(() => [])
+        );
+        const folderResults = await Promise.all(folderPromises);
+        const allFiles = folderResults.flat();
+
+        // 2. Ambil isi SEMUA file JSON dokumen secara PARALLEL sekaligus di detik yang sama
+        const docPromises = allFiles.map(file => 
+          fetch(`/api/docs/${file.id}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(docData => {
+              if (!docData) return null;
+              return {
+                ...docData,
+                driveFileId: file.id,
+                folderName: file.folderName,
+                title: docData.title || file.name,
+                icon: docData.icon || file.icon || 'file-text'
+              };
+            })
+            .catch(() => null)
+        );
+
+        const loadedDocs = await Promise.all(docPromises);
+        searchIndexDocs = loadedDocs.filter(doc => doc !== null);
+      } catch (err) {
+        console.error('Gagal membangun search index:', err);
+      } finally {
+        isIndexing = false;
+        if (spinner) spinner.className = 'fa-solid fa-magnifying-glass text-sm text-emerald-400';
+        const countLabel = document.getElementById('search-count-label');
+        if (countLabel) countLabel.innerText = `${searchIndexDocs.length} dokumen siap dicari`;
+      }
     }
-    function closeSearchModal(e) {
-      document.getElementById('modal-search').classList.add('hidden');
+    // 2. FLEXEBLE MATCHING: Mendukung Root Word ("konfig" mencocokkan "konfigurasi")
+    function handleSearchInput(keyword) {
+      const query = (keyword || '').toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results');
+      const countLabel = document.getElementById('search-count-label');
+      const isDeepSearch = document.getElementById('chk-search-deep').checked;
+
+      if (!query) {
+        resultsContainer.innerHTML = '<div class="p-6 text-center text-xs text-[#555]">Ketik kata kunci untuk mencari judul, Heading 1/2, atau isi teks...</div>';
+        countLabel.innerText = '0 hasil';
+        return;
+      }
+
+      const matches = [];
+
+      searchIndexDocs.forEach(doc => {
+        const docTitleLower = (doc.title || '').toLowerCase();
+        
+        // Pencocokan fleksibel (mendukung root word seperti "konfig" ke "konfigurasi")
+        const titleMatch = docTitleLower.includes(query) || query.split('').every(char => docTitleLower.includes(char));
+
+        if (titleMatch || docTitleLower.includes(query)) {
+          matches.push({
+            type: 'title',
+            docId: doc.driveFileId,
+            docTitle: doc.title,
+            folderName: doc.folderName,
+            targetBlockId: null,
+            badge: 'Judul Catatan',
+            badgeClass: 'bg-emerald-950/80 text-emerald-400 border-emerald-800',
+            highlightText: highlightKeyword(doc.title, query),
+            snippet: 'Membuka dokumen catatan utama'
+          });
+        }
+
+        if (Array.isArray(doc.blocks)) {
+          doc.blocks.forEach(block => {
+            let blockText = '';
+            let blockTypeLabel = '';
+            let badgeClass = '';
+
+            if (block.type === 'heading-1') {
+              blockText = block.content || '';
+              blockTypeLabel = 'Heading 1';
+              badgeClass = 'bg-blue-950/80 text-blue-400 border-blue-800';
+            } else if (block.type === 'heading-2') {
+              blockText = block.content || '';
+              blockTypeLabel = 'Heading 2';
+              badgeClass = 'bg-sky-950/80 text-sky-400 border-sky-800';
+            } else if (isDeepSearch) {
+              if (block.type === 'paragraph' || block.type === 'callout') blockText = block.content || '';
+              else if (block.type === 'toggle-accordion') blockText = `${block.title || ''} ${block.content || ''}`;
+              else if (block.type === 'vscode-code') blockText = `${block.filename || ''} ${block.content || ''}`;
+              else if (block.type === 'numbered-list' || block.type === 'bullet-list') {
+                blockText = (block.items || []).map(it => it.text || '').join(' ');
+              }
+              blockTypeLabel = 'Isi Teks';
+              badgeClass = 'bg-[#262626] text-[#aaa] border-[#3a3a3a]';
+            }
+
+            const cleanText = blockText.replace(/<[^>]*>/g, '');
+            const cleanTextLower = cleanText.toLowerCase();
+
+            if (cleanTextLower.includes(query)) {
+              matches.push({
+                type: 'block',
+                docId: doc.driveFileId,
+                docTitle: doc.title,
+                folderName: doc.folderName,
+                targetBlockId: block.id,
+                badge: blockTypeLabel,
+                badgeClass: badgeClass,
+                highlightText: highlightKeyword(extractSnippet(cleanText, query), query),
+                snippet: `Bagian dari: ${doc.title}`
+              });
+            }
+          });
+        }
+      });
+
+      countLabel.innerText = `${matches.length} ditemukan`;
+
+      if (matches.length === 0) {
+        resultsContainer.innerHTML = `
+          <div class="p-8 text-center text-xs text-[#666]">
+            Tidak ditemukan hasil untuk "<span class="text-white font-medium">${query}</span>".
+          </div>
+        `;
+        return;
+      }
+
+      resultsContainer.innerHTML = '';
+      matches.slice(0, 15).forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'pt-2 pb-2 px-2 hover:bg-[#282828] rounded-xl cursor-pointer transition flex items-start justify-between gap-3 group';
+        row.onclick = () => navigateToSearchResult(item.docId, item.targetBlockId);
+
+        row.innerHTML = `
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${item.badgeClass}">${item.badge}</span>
+              <span class="text-[11px] text-[#666] truncate">${item.folderName} / ${item.docTitle}</span>
+            </div>
+            <div class="text-xs sm:text-sm font-medium text-[#e0e0e0] group-hover:text-white leading-snug">
+              ${item.highlightText}
+            </div>
+          </div>
+          <div class="text-[11px] text-[#555] group-hover:text-emerald-400 shrink-0 self-center flex items-center gap-1">
+            <span>Buka</span>
+            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+          </div>
+        `;
+        resultsContainer.appendChild(row);
+      });
+      refreshLucideIcons();
     }
+
+function highlightKeyword(text, keyword) {
+      if (!text || !keyword) return text;
+      const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      // Gaya pill transparan halus ala Notion (tanpa border kotak kaku)
+      return text.replace(regex, '<span class="bg-[#3e3e3a] text-gray-100 px-1 rounded">$1</span>');
+    }
+
+  function extractSnippet(fullText, keyword) {
+    const idx = fullText.toLowerCase().indexOf(keyword.toLowerCase());
+    if (idx === -1) return fullText.slice(0, 80);
+    const start = Math.max(0, idx - 35);
+    const end = Math.min(fullText.length, idx + keyword.length + 55);
+    return (start > 0 ? '...' : '') + fullText.slice(start, end) + (end < fullText.length ? '...' : '');
+  }
+
+  async function navigateToSearchResult(docId, targetBlockId) {
+    closeSearchModal();
+    window.location.hash = `#/doc/${docId}`;
+
+    if (targetBlockId) {
+      let attempts = 0;
+      const checkExist = setInterval(() => {
+        attempts++;
+        const targetEl = document.querySelector(`[data-id="${targetBlockId}"]`);
+        if (targetEl) {
+          clearInterval(checkExist);
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetEl.classList.add('bg-emerald-500/10', 'ring-1', 'ring-emerald-500/50', 'rounded-lg', 'transition', 'duration-500');
+          setTimeout(() => targetEl.classList.remove('bg-emerald-500/10', 'ring-1', 'ring-emerald-500/50'), 2000);
+        }
+        if (attempts > 25) clearInterval(checkExist);
+      }, 100);
+    }
+  }
   </script>
 </body>
 </html>
