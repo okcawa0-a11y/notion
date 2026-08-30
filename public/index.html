@@ -446,7 +446,7 @@
     <div class="flex items-center gap-3 border-b border-[#2d2d2d] pb-3 px-1">
       <i id="search-spinner" class="fa-solid fa-magnifying-glass text-sm text-emerald-400"></i>
       <input id="input-global-search" type="text" 
-             placeholder="Cari judul materi, Heading 1/2, atau ketik 'apa itu ip'..." 
+             placeholder="Search" 
              oninput="handleSearchInput(this.value)"
              class="w-full bg-transparent text-sm sm:text-base text-white outline-none placeholder-[#555]">
       <button onclick="closeSearchModal()" class="text-xs text-[#777] hover:text-white px-1.5 py-0.5 rounded border border-[#333]">ESC</button>
@@ -2077,7 +2077,7 @@
   } else if (searchIndexDocs.length === 0) {
     resultsContainer.innerHTML = '<div class="p-6 text-center text-xs text-[#555]">Ketik apa saja untuk mulai mencari...</div>';
   } else {
-    resultsContainer.innerHTML = '<div class="p-6 text-center text-xs text-[#555]">Ketik kata kunci untuk mencari judul, Heading 1/2, atau isi teks...</div>';
+    resultsContainer.innerHTML = '<div class="p-6 text-center text-xs text-[#555]">...</div>';
   }
   document.getElementById('search-count-label').innerText = `${searchIndexDocs.length} dokumen di-index`;
 }
