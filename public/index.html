@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Notion TKJ Workspace</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Highlight.js Engine (Tema VS Code Dark) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#191919] text-[#d4d4d4] min-h-screen flex flex-col selection:bg-[#333333] selection:text-white overflow-x-hidden">
+
+  <!-- UPLOADER ELEMEN TERSEMBUNYI -->
+  <input type="file" id="global-image-uploader" class="hidden" accept="image/*">
+  <input type="file" id="global-lab-uploader" class="hidden" accept="*/*">
+
+  <!-- TOP APP BAR -->
+  <header class="h-12 border-b border-[#252525] bg-[#191919]/95 backdrop-blur sticky top-0 z-40 px-3 sm:px-6 flex items-center justify-between no-print select-none">
+    <div id="breadcrumbs" class="flex items-center gap-1 sm:gap-2 text-xs text-[#777] min-w-0 pr-2">
+      <button onclick="navigateHome()" class="hover:text-white flex items-center gap-1.5 font-medium shrink-0 cursor-pointer" title="Kembali ke Beranda">
+        <span class="w-4 h-4 bg-white text-black font-bold flex items-center justify-center rounded text-[10px]">N</span>
+        <span class="hidden xs:inline sm:inline">Workspace</span>
+      </button>
+
+      <button id="btn-sync-action" onclick="handleSyncOrSave()" class="p-1 text-[#666] hover:text-white rounded hover:bg-[#252525] transition cursor-pointer shrink-0" title="Simpan Manual (Ctrl + S) / Refresh Tampilan">
+        <i id="brand-refresh-icon" class="fa-solid fa-rotate-right text-[11px]"></i>
+      </button>
+
+      <span id="bc-folder" class="hidden shrink-0 flex items-center gap-1 sm:gap-1.5">
+        <span class="text-[#444]">/</span>
+        <span class="hover:text-white cursor-pointer truncate max-w-[90px] sm:max-w-[150px]" onclick="navigateCurrentFolder()">Folder</span>
+      </span>
+      <span id="bc-doc" class="hidden text-white font-medium shrink min-w-0 flex items-center gap-1 sm:gap-1.5">
+        <span class="text-[#444]">/</span>
+        <span id="bc-doc-title" class="truncate block max-w-[100px] sm:max-w-[200px]">Document</span>
+      </span>
+    </div>
+
+    <!-- Actions & Auth Controls di Pojok Kanan Atas -->
+    <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
+      <span id="save-status" class="hidden md:inline text-xs text-[#555]">All synced</span>
+
+      <!-- QUICK SEARCH BUTTON -->
+      <button onclick="openSearchModal()" class="text-xs bg-[#242424] hover:bg-[#2c2c2c] px-2 sm:px-2.5 py-1 rounded text-[#888] hover:text-white border border-[#333] flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+        <span class="hidden sm:inline">Search</span>
+        <kbd class="hidden sm:inline text-[9px] bg-[#191919] px-1 rounded border border-[#444]">Ctrl K</kbd>
+      </button>
+
+      <!-- PRINT PDF -->
+      <button onclick="window.print()" class="hidden sm:block text-xs hover:text-white text-[#777] p-1.5" title="Print Clean PDF">
+        <i class="fa-solid fa-print"></i>
+      </button>
+
+      <!-- TOMBOL AUTHENTICATION (LOGIN ADMIN / STATUS AKTIF) -->
+      <div id="auth-controls" class="flex items-center gap-1.5">
+        <!-- Render otomatis via JS: Tombol Login atau Badge Admin + Logout -->
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= VIEW 1: HOME (KATEGORI MATERI) ================= -->
+  <section id="view-home" class="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div class="mb-6 pb-3 border-b border-[#252525] flex items-center justify-between">
+      <div>
+        <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">Kategori Materi</h1>
+        <p class="text-[11px] sm:text-xs text-[#666] mt-0.5">Semua folder di Google Drive tersinkronisasi otomatis.</p>
+      </div>
+      <button onclick="fetchFolders(true)" class="text-xs bg-[#222] hover:bg-[#2c2c2c] text-[#aaa] hover:text-white border border-[#333] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition" title="Refresh Folder Drive">
+        <i id="sync-icon" class="fa-solid fa-rotate text-[11px]"></i>
+        <span class="hidden sm:inline">Sinkron Drive</span>
+      </button>
+    </div>
+
+    <div id="folder-grid" class="flex flex-col border-t border-[#252525]"></div>
+  </section>
+
+  <!-- ================= VIEW 2: FOLDER EXPLORER ================= -->
+  <section id="view-folder" class="hidden flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <div class="flex items-center justify-between mb-6 pb-4 border-b border-[#252525]">
+      <div class="min-w-0 pr-3">
+        <div class="text-[10px] text-[#777] uppercase tracking-wider font-semibold mb-0.5">Kategori</div>
+        <h2 id="folder-title" class="text-lg sm:text-xl font-bold text-white flex items-center gap-2.5 truncate">
+          <span id="folder-icon-badge" class="shrink-0 flex items-center text-emerald-400">📁</span>
+          <span id="folder-name-text" class="truncate">Loading...</span>
+        </h2>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Tombol Dokumen Baru (Hanya Muncul untuk Admin) -->
+        <button id="btn-new-doc-folder" onclick="openNewDocModal(activeFolderId)" class="hidden bg-white hover:bg-gray-200 text-black text-xs font-semibold px-3 py-1.5 rounded transition flex items-center gap-1.5">
+          <i class="fa-solid fa-plus text-[10px]"></i> <span>Dokumen Baru</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="doc-list-container" class="space-y-1"></div>
+  </section>
+
+  <!-- ================= VIEW 3: NOTION CANVAS ================= -->
+  <section id="view-canvas" class="hidden flex-1 flex flex-col relative w-full pb-32">
+    
+    <!-- Cover Banner -->
+    <div id="cover-wrap" class="w-full h-40 sm:h-52 relative bg-[#202020] hidden group select-none">
+      <img id="cover-img" src="" class="w-full h-full object-cover">
+      <div id="cover-actions" class="hidden absolute bottom-3 right-4 sm:right-8 group-hover:flex items-center gap-2">
+        <button onclick="openCoverPickerModal()" class="text-xs bg-black/80 hover:bg-black text-white px-2.5 py-1.5 rounded-lg backdrop-blur border border-white/10 flex items-center gap-1.5 shadow-lg">
+          <i class="fa-regular fa-image text-xs"></i> <span>Ganti Cover</span>
+        </button>
+        <button onclick="removeCover()" class="text-xs bg-black/80 hover:bg-black text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg backdrop-blur border border-white/10 shadow-lg">
+          Hapus
+        </button>
+      </div>
+    </div>
+
+    <div class="max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 flex-1 flex flex-col">
+      <div id="meta-toolbar" class="hidden flex items-center justify-between text-xs text-[#777] mb-2">
+        <div class="flex items-center gap-3">
+          <button onclick="openLucidePicker(onCanvasIconSelected)" class="hover:text-white transition flex items-center gap-1.5">
+            <i class="fa-regular fa-face-smile"></i> Ganti Icon
+          </button>
+          <button onclick="openCoverPickerModal()" class="hover:text-white transition flex items-center gap-1.5">
+            <i class="fa-regular fa-image"></i> Cover
+          </button>
+        </div>
+        <div id="move-folder-wrap" class="flex items-center gap-1.5">
+          <span class="text-[11px] hidden sm:inline">Pindah ke:</span>
+          <select id="move-folder-select" onchange="changeDocFolder(this.value)" class="bg-[#242424] border border-[#333] text-white text-[11px] rounded px-1.5 py-0.5 outline-none max-w-[130px] sm:max-w-[180px] truncate">
+          </select>
+        </div>
+      </div>
+
+      <!-- Icon Dokumen -->
+      <div id="doc-icon-wrap" onclick="handleCanvasIconClick()" 
+           class="w-12 h-12 flex items-center justify-center rounded-lg hover:bg-[#252525] cursor-pointer transition mb-2 select-none text-[#e0e0e0]" 
+           title="Icon Dokumen">
+        <span id="doc-icon-rendered">📄</span>
+      </div>
+
+      <!-- Judul Dokumen -->
+      <input id="doc-title-input" type="text" placeholder="Untitled Document" 
+             class="w-full bg-transparent text-2xl sm:text-4xl font-bold text-white placeholder-[#383838] outline-none border-none mb-6" readonly>
+
+      <!-- Blocks Canvas -->
+      <div id="blocks-container" class="space-y-2.5 min-h-[400px]"></div>
+    </div>
+
+    <!-- FLOATING CONTROLS (FAB) -->
+    <div id="fab-container" class="fixed bottom-5 right-5 z-40 flex items-center gap-2 select-none no-print">
+      <div class="relative">
+        <button onclick="toggleTOC()" class="bg-[#222222]/90 hover:bg-[#2a2a2a] text-[#aaa] hover:text-white text-xs px-3.5 py-2.5 rounded-full border border-[#333] shadow-2xl backdrop-blur flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-list-ul text-[11px]"></i>
+          <span class="hidden sm:inline font-medium">Daftar Isi</span>
+        </button>
+        <div id="toc-dropdown" class="hidden absolute bottom-12 right-0 w-60 p-3 rounded-xl border border-[#333] shadow-2xl text-xs space-y-1 max-h-72 overflow-y-auto bg-[#1c1c1c]/95 backdrop-blur">
+          <div class="text-[10px] uppercase font-bold text-[#666] mb-1.5">Outline Dokumen</div>
+          <div id="toc-items" class="space-y-1 text-[#bbb]"></div>
+        </div>
+      </div>
+
+      <!-- Tombol FAB Tambah Blok (Hanya Aktif untuk Admin) -->
+      <div id="fab-add-wrapper" class="hidden relative">
+        <button id="btn-fab-trigger" onclick="toggleFabMenu()" 
+                class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 font-semibold transition transform hover:scale-105">
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>Tambah Blok</span>
+        </button>
+
+        <div id="fab-menu" class="hidden absolute bottom-12 right-0 w-64 p-2 bg-[#202020] border border-[#333] rounded-xl shadow-2xl z-50 text-xs space-y-0.5 max-h-96 overflow-y-auto">
+          <div class="text-[10px] font-bold text-[#777] px-2.5 py-1 uppercase tracking-wider">12 Blok Materi (Kosongan)</div>
+          
+          <button onclick="addBlockFromFab('table')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-purple-400 font-medium">
+            <i class="fa-solid fa-table w-4"></i> <span>1. Tabel Dinamis</span>
+          </button>
+          <button onclick="addBlockFromFab('paragraph')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-[#d4d4d4]">
+            <i class="fa-solid fa-paragraph w-4 text-[#888]"></i> <span>2. Teks Paragraf</span>
+          </button>
+          <button onclick="addBlockFromFab('image')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-emerald-400">
+            <i class="fa-solid fa-image w-4"></i> <span>3. Upload Gambar (Full-Width)</span>
+          </button>
+          <button onclick="addBlockFromFab('vscode-code')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-sky-400 font-semibold">
+            <i class="fa-solid fa-code w-4"></i> <span>4. VS Code Code Block</span>
+          </button>
+          <button onclick="addBlockFromFab('heading-1')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-[#d4d4d4]">
+            <i class="fa-solid fa-heading w-4 text-[#888]"></i> <span>5. Heading 1</span>
+          </button>
+          <button onclick="addBlockFromFab('heading-2')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-[#d4d4d4]">
+            <i class="fa-solid fa-heading w-4 text-[10px] text-[#888]"></i> <span>5. Heading 2</span>
+          </button>
+          <button onclick="addBlockFromFab('heading-3')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-[#d4d4d4]">
+            <i class="fa-solid fa-heading w-4 text-[8px] text-[#888]"></i> <span>5. Heading 3</span>
+          </button>
+          <button onclick="addBlockFromFab('numbered-list')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-amber-400">
+            <i class="fa-solid fa-list-ol w-4"></i> <span>6. Nomor Urut (Editable)</span>
+          </button>
+          <button onclick="addBlockFromFab('bullet-list')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-amber-400">
+            <i class="fa-solid fa-list-ul w-4"></i> <span>7. List Titik (Bullet)</span>
+          </button>
+          <button onclick="addBlockFromFab('callout')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-amber-300">
+            <i class="fa-solid fa-lightbulb w-4"></i> <span>8. Callout Box</span>
+          </button>
+          <button onclick="addBlockFromFab('divider')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-[#888]">
+            <i class="fa-solid fa-minus w-4"></i> <span>9. Garis Pemisah</span>
+          </button>
+          <button onclick="addBlockFromFab('toggle-accordion')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-indigo-400">
+            <i class="fa-solid fa-square-caret-down w-4"></i> <span>10. Toggle (Buka-Tutup)</span>
+          </button>
+          <button onclick="addBlockFromFab('file-card')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-teal-400">
+            <i class="fa-solid fa-paperclip w-4"></i> <span>11. Upload File Lab (Drive)</span>
+          </button>
+          <button onclick="addBlockFromFab('kbd-shortcut')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-rose-400">
+            <i class="fa-solid fa-keyboard w-4"></i> <span>12. Keyboard Shortcut Badge</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MODAL: LOGIN ADMIN (SINGLE PASSWORD) ================= -->
+  <div id="modal-login" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-[#202020] border border-[#333] rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+      <div class="text-center mb-5">
+        <div class="w-12 h-12 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-400 flex items-center justify-center mx-auto mb-2 text-lg">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h3 class="text-base font-bold text-white">Login Admin</h3>
+        <p class="text-xs text-[#777] mt-1">Masukkan password admin untuk mengedit materi.</p>
+      </div>
+
+      <form onsubmit="submitAdminLogin(event)" class="space-y-4">
+        <div>
+          <label class="text-[11px] font-semibold text-[#888] uppercase tracking-wider block mb-1.5">Password Admin</label>
+          <input type="password" id="input-admin-password" placeholder="Masukkan password..." required
+                 class="w-full bg-[#161616] border border-[#333] rounded-xl p-3 text-sm text-white outline-none focus:border-emerald-500 transition">
+        </div>
+        <div id="login-error-msg" class="hidden text-xs text-red-400 text-center font-medium"></div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeLoginModal()" class="flex-1 py-2.5 rounded-xl bg-[#282828] hover:bg-[#333] text-xs text-[#aaa] hover:text-white transition">Batal</button>
+          <button type="submit" id="btn-submit-login" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition shadow-lg">Masuk</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: COVER PICKER ================= -->
+  <div id="modal-cover-picker" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-[#202020] border border-[#333] rounded-2xl max-w-xl w-full p-5 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-[#2d2d2d]">
+        <div class="flex items-center gap-2">
+          <i class="fa-regular fa-image text-emerald-400 text-sm"></i>
+          <h3 class="text-sm font-bold text-white">Pilih atau Buat Cover</h3>
+        </div>
+        <button onclick="closeCoverPickerModal()" class="text-[#888] hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="flex items-center gap-2 mt-3 border-b border-[#2a2a2a] pb-2 text-xs select-none">
+        <button onclick="switchCoverTab('presets')" id="tab-btn-presets" class="cover-tab-btn px-3 py-1.5 rounded-lg bg-[#2b2b2b] text-white font-medium">Galeri Preset</button>
+        <button onclick="switchCoverTab('url')" id="tab-btn-url" class="cover-tab-btn px-3 py-1.5 rounded-lg text-[#888] hover:text-white">Direct Link (URL)</button>
+        <button onclick="switchCoverTab('ai')" id="tab-btn-ai" class="cover-tab-btn px-3 py-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i> AI Generator
+        </button>
+      </div>
+
+      <div id="cover-tab-presets" class="mt-3 flex-1 overflow-y-auto space-y-3 pr-1">
+        <div>
+          <div class="text-[11px] font-semibold text-[#777] uppercase tracking-wider mb-2">Datacenter & Server TKJ</div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <img src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&q=80" onclick="applyCoverFromUrl(this.src)" class="h-20 w-full object-cover rounded-lg border border-[#333] hover:border-emerald-500 cursor-pointer transition hover:scale-[1.02]">
+            <img src="https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=1200&q=80" onclick="applyCoverFromUrl(this.src)" class="h-20 w-full object-cover rounded-lg border border-[#333] hover:border-emerald-500 cursor-pointer transition hover:scale-[1.02]">
+            <img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200&q=80" onclick="applyCoverFromUrl(this.src)" class="h-20 w-full object-cover rounded-lg border border-[#333] hover:border-emerald-500 cursor-pointer transition hover:scale-[1.02]">
+          </div>
+        </div>
+        <div>
+          <div class="text-[11px] font-semibold text-[#777] uppercase tracking-wider mb-2">Cyberpunk & Hardware</div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1200&q=80" onclick="applyCoverFromUrl(this.src)" class="h-20 w-full object-cover rounded-lg border border-[#333] hover:border-emerald-500 cursor-pointer transition hover:scale-[1.02]">
+            <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&q=80" onclick="applyCoverFromUrl(this.src)" class="h-20 w-full object-cover rounded-lg border border-[#333] hover:border-emerald-500 cursor-pointer transition hover:scale-[1.02]">
+            <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200&q=80" onclick="applyCoverFromUrl(this.src)" class="h-20 w-full object-cover rounded-lg border border-[#333] hover:border-emerald-500 cursor-pointer transition hover:scale-[1.02]">
+          </div>
+        </div>
+        <div>
+          <div class="text-[11px] font-semibold text-[#777] uppercase tracking-wider mb-2">Minimalist Gradient</div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&q=80" onclick="applyCoverFromUrl(this.src)" class="h-20 w-full object-cover rounded-lg border border-[#333] hover:border-emerald-500 cursor-pointer transition hover:scale-[1.02]">
+            <img src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1200&q=80" onclick="applyCoverFromUrl(this.src)" class="h-20 w-full object-cover rounded-lg border border-[#333] hover:border-emerald-500 cursor-pointer transition hover:scale-[1.02]">
+            <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=80" onclick="applyCoverFromUrl(this.src)" class="h-20 w-full object-cover rounded-lg border border-[#333] hover:border-emerald-500 cursor-pointer transition hover:scale-[1.02]">
+          </div>
+        </div>
+      </div>
+
+      <div id="cover-tab-url" class="hidden mt-3 flex-1 flex flex-col justify-center space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-[#bbb] block mb-1.5">Paste Link Gambar Publik (Semua URL Gambar di Internet)</label>
+          <input type="text" id="input-cover-direct-url" placeholder="https://images.unsplash.com/... atau https://i.imgur.com/..." 
+                 class="w-full bg-[#161616] border border-[#333] rounded-xl p-3 text-xs text-white outline-none focus:border-emerald-500 transition placeholder-[#555]">
+        </div>
+        <button onclick="submitDirectCoverUrl()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition">
+          Terapkan Link Gambar Ini
+        </button>
+      </div>
+
+      <div id="cover-tab-ai" class="hidden mt-3 flex-1 flex flex-col space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-[#bbb] block mb-1.5">Ketik Prompt Gambar Cover untuk AI</label>
+          <input type="text" id="input-cover-ai-prompt" placeholder="Contoh: futuristic cisco datacenter neon fiber optic dark aesthetic" 
+                 class="w-full bg-[#161616] border border-[#333] rounded-xl p-3 text-xs text-white outline-none focus:border-emerald-500 transition placeholder-[#555]">
+        </div>
+        <button onclick="generateAICover()" id="btn-generate-ai" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition shadow-lg">
+          <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> <span>Generate Cover dengan AI</span>
+        </button>
+        <div id="ai-preview-box" class="hidden flex-1 border border-[#2d2d2d] rounded-xl overflow-hidden relative group min-h-[140px] bg-[#161616]">
+          <img id="ai-preview-img" src="" class="w-full h-full object-cover">
+          <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+            <button onclick="applyAICover()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-xl">Gunakan Cover Ini</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-[#2a2a2a] flex items-center justify-between text-xs text-[#777]">
+        <span>Klik untuk memilih</span>
+        <button onclick="removeCover(); closeCoverPickerModal()" class="text-red-400 hover:text-red-300">Hapus Cover</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: EDIT MATERI ================= -->
+  <div id="modal-edit-doc" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-[#202020] border border-[#333] rounded-xl max-w-md w-full p-5 shadow-2xl">
+      <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-pen-to-square text-sm text-sky-400"></i> Edit Informasi Catatan
+      </h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="text-[11px] font-semibold text-[#888] uppercase tracking-wider block mb-1">Judul Catatan</label>
+          <input id="input-edit-title" type="text" class="w-full bg-[#181818] border border-[#333] rounded p-2 text-sm text-white outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-[11px] font-semibold text-[#888] uppercase tracking-wider block mb-1">Icon Materi (Lucide)</label>
+          <div class="flex items-center gap-3">
+            <div id="preview-edit-icon" class="w-10 h-10 rounded bg-[#181818] border border-[#333] flex items-center justify-center text-white text-lg shrink-0">📄</div>
+            <button type="button" onclick="openLucidePicker(onEditModalIconSelected)" class="px-3 py-1.5 text-xs bg-[#282828] hover:bg-[#333] text-white border border-[#3a3a3a] rounded transition flex items-center gap-2">
+              <i class="fa-regular fa-face-smile"></i> Pilih Icon...
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="text-[11px] font-semibold text-[#888] uppercase tracking-wider block mb-1">Pindahkan ke Folder</label>
+          <select id="select-edit-folder" class="w-full bg-[#181818] border border-[#333] rounded p-2 text-sm text-white outline-none focus:border-gray-400"></select>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center mt-6 pt-4 border-t border-[#2a2a2a]">
+        <button onclick="confirmDeleteFromEditModal()" class="text-xs text-red-400 hover:text-red-300 flex items-center gap-1.5"><i class="fa-regular fa-trash-can"></i> Hapus</button>
+        <div class="flex gap-2">
+          <button onclick="closeEditDocModal()" class="px-3 py-1.5 text-xs text-[#888] hover:text-white rounded">Batal</button>
+          <button onclick="submitEditDoc()" class="px-4 py-1.5 text-xs font-semibold bg-white text-black hover:bg-gray-200 rounded">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: LUCIDE ICON PICKER ================= -->
+  <div id="modal-lucide-picker" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-[#202020] border border-[#333] rounded-xl max-w-lg w-full p-4 sm:p-5 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-[#2a2a2a]">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Pilih Icon Lucide</h3>
+        <button onclick="closeLucidePicker()" class="text-[#888] hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="mt-3 relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-[#666]"></i>
+        <input id="input-lucide-search" type="text" placeholder="Cari icon (server, network, terminal, wifi, code)..." 
+               oninput="filterLucideIcons(this.value)"
+               class="w-full bg-[#161616] border border-[#333] rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder-[#555] outline-none focus:border-emerald-500 transition">
+      </div>
+
+      <div class="flex gap-1.5 mt-2.5 overflow-x-auto pb-1 text-[11px] select-none">
+        <button onclick="setLucideCategory('all')" class="category-btn bg-[#292929] text-white px-2 py-0.5 rounded shrink-0">Semua</button>
+        <button onclick="setLucideCategory('network')" class="category-btn bg-[#1a1a1a] text-[#888] hover:text-white px-2 py-0.5 rounded shrink-0">Jaringan & TKJ</button>
+        <button onclick="setLucideCategory('dev')" class="category-btn bg-[#1a1a1a] text-[#888] hover:text-white px-2 py-0.5 rounded shrink-0">Dev & Server</button>
+        <button onclick="setLucideCategory('files')" class="category-btn bg-[#1a1a1a] text-[#888] hover:text-white px-2 py-0.5 rounded shrink-0">File & Folder</button>
+      </div>
+
+      <div id="lucide-grid" class="mt-3 grid grid-cols-4 sm:grid-cols-6 gap-2 overflow-y-auto max-h-72 p-1"></div>
+      <div class="mt-3 pt-2.5 border-t border-[#262626] flex items-center justify-between text-[11px] text-[#666]">
+        <span id="lucide-count-text">Memuat icon...</span>
+        <span>Klik untuk memilih</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: DOKUMEN BARU ================= -->
+  <div id="modal-new-doc" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-[#202020] border border-[#333] rounded-xl max-w-md w-full p-5 shadow-2xl">
+      <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-file-circle-plus text-sm"></i> Buat Catatan Materi Baru
+      </h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="text-[11px] font-semibold text-[#888] uppercase tracking-wider block mb-1">Judul Catatan</label>
+          <input id="input-new-title" type="text" placeholder="Contoh: Konfigurasi VLAN Trunking Cisco" 
+                 class="w-full bg-[#181818] border border-[#333] rounded p-2 text-sm text-white outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-[11px] font-semibold text-[#888] uppercase tracking-wider block mb-1">Target Folder</label>
+          <select id="select-new-folder" class="w-full bg-[#181818] border border-[#333] rounded p-2 text-sm text-white outline-none focus:border-gray-400"></select>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-6">
+        <button onclick="closeNewDocModal()" class="px-3 py-1.5 text-xs text-[#888] hover:text-white rounded">Batal</button>
+        <button onclick="submitNewDoc()" class="px-4 py-1.5 text-xs font-semibold bg-white text-black hover:bg-gray-200 rounded">Buat Dokumen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX & SEARCH -->
+  <div id="lightbox-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl">
+  </div>
+
+  <div id="modal-search" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-start justify-center pt-16 sm:pt-20 p-4" onclick="closeSearchModal(event)">
+    <div class="bg-[#222222] border border-[#333] rounded-xl max-w-lg w-full p-3 shadow-2xl" onclick="event.stopPropagation()">
+      <div class="flex items-center gap-2 border-b border-[#333] pb-2 px-2">
+        <i class="fa-solid fa-magnifying-glass text-xs text-[#777]"></i>
+        <input id="input-global-search" type="text" placeholder="Cari materi, konfigurasi..." class="w-full bg-transparent text-sm text-white outline-none placeholder-[#555]">
+      </div>
+      <div id="search-results" class="mt-2 space-y-1 max-h-72 overflow-y-auto text-xs text-[#999]">
+        <div class="p-3 text-center text-[#555]">Ketik kata kunci pencarian...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENGINE JAVASCRIPT LENGKAP -->
+  <script>
+    let isAuthorMode = false;
+    let allFolders = [];
+    let activeFolderId = null;
+    let currentDoc = null;
+    let saveTimeout = null;
+
+    let pendingUploadImageBlock = null;
+    let pendingUploadLabBlock = null;
+
+    let editingDocId = null;
+    let editingDocFolderId = null;
+    let selectedEditIcon = 'file-text';
+    let lucidePickerCallback = null;
+    let generatedAICoverUrl = null;
+
+    const LUCIDE_ICONS = [
+      { name: 'folder', category: 'files', label: 'Folder' },
+      { name: 'folder-git-2', category: 'files', label: 'Git Repo' },
+      { name: 'server', category: 'network', label: 'Server' },
+      { name: 'network', category: 'network', label: 'Network' },
+      { name: 'terminal', category: 'network', label: 'Terminal' },
+      { name: 'cpu', category: 'network', label: 'Processor' },
+      { name: 'wifi', category: 'network', label: 'Wi-Fi' },
+      { name: 'router', category: 'network', label: 'Router' },
+      { name: 'globe', category: 'network', label: 'WAN' },
+      { name: 'cable', category: 'network', label: 'LAN Cable' },
+      { name: 'database', category: 'network', label: 'Database' },
+      { name: 'shield', category: 'dev', label: 'Security' },
+      { name: 'shield-check', category: 'dev', label: 'Hardening' },
+      { name: 'code', category: 'dev', label: 'Code' },
+      { name: 'git-branch', category: 'dev', label: 'Git' },
+      { name: 'box', category: 'dev', label: 'Docker' },
+      { name: 'file-text', category: 'files', label: 'Dokumen' },
+      { name: 'file-code', category: 'files', label: 'Config Script' },
+      { name: 'book-open', category: 'files', label: 'Modul Teori' },
+      { name: 'zap', category: 'files', label: 'Cisco' },
+      { name: 'cloud', category: 'files', label: 'Cloud' }
+    ];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await detectEnvironmentAndAuth();
+      await fetchFolders();
+      handleHashRouting();
+      window.addEventListener('hashchange', handleHashRouting);
+      setupGlobalEvents();
+      renderLucidePickerGrid(LUCIDE_ICONS);
+    });
+
+    // Helper: Header Request dengan Password Admin
+    function getAuthHeaders() {
+      const token = localStorage.getItem('notion_admin_key') || '';
+      return {
+        'Content-Type': 'application/json',
+        'x-admin-key': token,
+      };
+    }
+
+    // 1. SISTEM AUTENTIKASI ADMIN ONLINE & LOCALHOST
+    async function detectEnvironmentAndAuth() {
+      try {
+        const storedKey = localStorage.getItem('notion_admin_key') || '';
+        const res = await fetch('/api/mode', {
+          headers: { 'x-admin-key': storedKey },
+        });
+        const data = await res.json();
+        
+        // Author aktif jika di Localhost ATAU sudah Login Admin di Vercel
+        isAuthorMode = data.isAuthenticated;
+        renderAuthUI(data.isLocal);
+      } catch (err) {
+        isAuthorMode = false;
+        renderAuthUI(false);
+      }
+    }
+
+    function renderAuthUI(isLocal) {
+      const container = document.getElementById('auth-controls');
+      const btnNewDoc = document.getElementById('btn-new-doc-folder');
+      const fabAdd = document.getElementById('fab-add-wrapper');
+      const metaToolbar = document.getElementById('meta-toolbar');
+      const coverActions = document.getElementById('cover-actions');
+      const docTitle = document.getElementById('doc-title-input');
+
+      if (isAuthorMode) {
+        container.innerHTML = `
+          <div class="flex items-center gap-1.5">
+            <span class="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
+              <i class="fa-solid fa-lock-open text-[9px]"></i> <span>${isLocal ? 'Local (Admin)' : 'Admin Online'}</span>
+            </span>
+            ${!isLocal ? `
+              <button onclick="logoutAdmin()" class="text-xs text-[#888] hover:text-red-400 p-1 transition" title="Logout Admin">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+              </button>
+            ` : ''}
+          </div>
+        `;
+        if (btnNewDoc) btnNewDoc.classList.remove('hidden');
+        if (fabAdd) fabAdd.classList.remove('hidden');
+        if (metaToolbar) metaToolbar.classList.remove('hidden');
+        if (coverActions) coverActions.classList.remove('hidden');
+        if (docTitle) docTitle.readOnly = false;
+      } else {
+        container.innerHTML = `
+          <button onclick="openLoginModal()" class="text-xs bg-emerald-600/90 hover:bg-emerald-500 text-white font-medium px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition shadow">
+            <i class="fa-solid fa-key text-[10px]"></i> <span>Login Admin</span>
+          </button>
+        `;
+        if (btnNewDoc) btnNewDoc.classList.add('hidden');
+        if (fabAdd) fabAdd.classList.add('hidden');
+        if (metaToolbar) metaToolbar.classList.add('hidden');
+        if (coverActions) coverActions.classList.add('hidden');
+        if (docTitle) docTitle.readOnly = true;
+      }
+    }
+
+    function openLoginModal() {
+      document.getElementById('input-admin-password').value = '';
+      document.getElementById('login-error-msg').classList.add('hidden');
+      document.getElementById('modal-login').classList.remove('hidden');
+      document.getElementById('input-admin-password').focus();
+    }
+
+    function closeLoginModal() {
+      document.getElementById('modal-login').classList.add('hidden');
+    }
+
+    async function submitAdminLogin(e) {
+      e.preventDefault();
+      const password = document.getElementById('input-admin-password').value;
+      const btn = document.getElementById('btn-submit-login');
+      const errEl = document.getElementById('login-error-msg');
+
+      btn.disabled = true;
+      btn.innerText = 'Memverifikasi...';
+      errEl.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          localStorage.setItem('notion_admin_key', data.key);
+          isAuthorMode = true;
+          closeLoginModal();
+          await detectEnvironmentAndAuth();
+          // Muat ulang tampilan agar tombol edit aktif seketika
+          if (activeFolderId) await loadFolderContents(activeFolderId);
+          if (currentDoc) await loadDocumentCanvas(currentDoc.driveFileId);
+        } else {
+          errEl.innerText = data.error || 'Password salah!';
+          errEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        errEl.innerText = 'Gagal menghubungi server!';
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Masuk';
+      }
+    }
+
+    function logoutAdmin() {
+      if (!confirm('Keluar dari sesi Admin?')) return;
+      localStorage.removeItem('notion_admin_key');
+      isAuthorMode = false;
+      detectEnvironmentAndAuth();
+      if (activeFolderId) loadFolderContents(activeFolderId);
+      if (currentDoc) loadDocumentCanvas(currentDoc.driveFileId);
+    }
+
+    // Inline Token (#point#)
+    function formatInlineTokens(rawText) {
+      if (!rawText) return '';
+      return rawText
+        .replace(/#([^#\n]+)#/g, '<span class="point-badge">$1</span>')
+        .replace(/\*([^*\n]+)\*/g, '<strong class="font-semibold text-white">$1</strong>')
+        .replace(/_([^_\n]+)_/g, '<em class="italic text-gray-200">$1</em>')
+        .replace(/~([^~\n]+)~/g, '<del class="line-through text-gray-500">$1</del>')
+        .replace(/`([^`\n]+)`/g, '<code class="bg-[#242424] text-emerald-400 px-1.5 py-0.5 rounded font-mono text-xs border border-[#333]">$1</code>');
+    }
+
+    function renderIconHTML(iconStr, extraClass = "w-4 h-4") {
+      if (!iconStr) return `<i data-lucide="file-text" class="${extraClass}"></i>`;
+      const clean = iconStr.trim();
+      const isEmoji = /\p{Extended_Pictographic}/u.test(clean);
+      if (isEmoji) return `<span class="inline-block select-none leading-none">${clean}</span>`;
+      return `<i data-lucide="${clean.toLowerCase()}" class="${extraClass}"></i>`;
+    }
+
+    function refreshLucideIcons() {
+      setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 40);
+    }
+
+    function getLangVisuals(lang) {
+      switch(lang) {
+        case 'javascript': return { icon: '<i class="fa-brands fa-js text-yellow-400"></i>' };
+        case 'html': return { icon: '<i class="fa-brands fa-html5 text-orange-500"></i>' };
+        case 'css': return { icon: '<i class="fa-brands fa-css3-alt text-sky-400"></i>' };
+        case 'python': return { icon: '<i class="fa-brands fa-python text-amber-300"></i>' };
+        case 'bash': return { icon: '<i class="fa-solid fa-terminal text-emerald-400"></i>' };
+        case 'sql': return { icon: '<i class="fa-solid fa-database text-rose-400"></i>' };
+        case 'json': return { icon: '<i class="fa-solid fa-code text-lime-400"></i>' };
+        case 'cpp': return { icon: '<i class="fa-solid fa-c text-blue-400"></i>' };
+        case 'php': return { icon: '<i class="fa-brands fa-php text-indigo-400"></i>' };
+        default: return { icon: '<i class="fa-solid fa-code text-sky-400"></i>' };
+      }
+    }
+
+    function applyCodeHighlight(preEl, lang) {
+      if (!window.hljs) return;
+      const raw = preEl.innerText;
+      if (!raw.trim()) { preEl.innerHTML = ''; return; }
+      try {
+        const validLang = hljs.getLanguage(lang) ? lang : 'plaintext';
+        preEl.innerHTML = hljs.highlight(raw, { language: validLang, ignoreIllegals: true }).value;
+      } catch (err) {}
+    }
+
+    // FETCH FOLDER OTOMATIS
+    async function fetchFolders(isManualSync = false) {
+      const syncIcon = document.getElementById('sync-icon');
+      if (syncIcon && isManualSync) syncIcon.classList.add('fa-spin');
+
+      try {
+        const res = await fetch('/api/folders');
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) {
+          allFolders = data;
+          renderFolderGrid();
+          populateFolderDropdowns();
+        }
+      } catch (err) {
+        console.error('Failed to fetch folders:', err);
+      } finally {
+        if (syncIcon && isManualSync) {
+          setTimeout(() => syncIcon.classList.remove('fa-spin'), 600);
+        }
+      }
+    }
+
+    function getFolderDefaultIcon(folderName) {
+      const lower = folderName.toLowerCase();
+      if (lower.includes('cisco')) return 'zap';
+      if (lower.includes('mikrotik')) return 'router';
+      if (lower.includes('linux')) return 'terminal';
+      if (lower.includes('web')) return 'globe';
+      if (lower.includes('coding')) return 'code';
+      if (lower.includes('cheat')) return 'book-open';
+      return 'folder';
+    }
+
+    function renderFolderGrid() {
+      const listContainer = document.getElementById('folder-grid');
+      listContainer.innerHTML = '';
+
+      allFolders.forEach(folder => {
+        const iconName = folder.icon || getFolderDefaultIcon(folder.name);
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between py-3 px-2 border-b border-[#252525] hover:bg-[#202020] cursor-pointer transition select-none group';
+        
+        row.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0 flex-1">
+            <button type="button" class="folder-icon-btn p-1.5 rounded-lg hover:bg-[#2c2c2c] text-emerald-400 shrink-0 flex items-center transition ${isAuthorMode ? 'cursor-pointer' : 'cursor-default'}" title="${isAuthorMode ? 'Ganti Icon Folder' : ''}">
+              ${renderIconHTML(iconName, "w-4 h-4")}
+            </button>
+            <span class="folder-name-label text-sm font-normal text-[#d4d4d4] group-hover:text-white truncate flex-1">${folder.name}</span>
+          </div>
+          <i class="fa-solid fa-chevron-right text-[11px] text-[#444] group-hover:text-[#888] group-hover:translate-x-0.5 transition shrink-0 ml-2"></i>
+        `;
+
+        row.querySelector('.folder-name-label').onclick = () => window.location.hash = `#/folder/${folder.id}`;
+
+        if (isAuthorMode) {
+          row.querySelector('.folder-icon-btn').onclick = (e) => {
+            e.stopPropagation();
+            openLucidePicker(async (newIcon) => {
+              folder.icon = newIcon;
+              await fetch(`/api/folders/${folder.id}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ icon: newIcon }),
+              });
+              renderFolderGrid();
+            });
+          };
+        }
+
+        listContainer.appendChild(row);
+      });
+      refreshLucideIcons();
+    }
+
+    function populateFolderDropdowns() {
+      const selectNew = document.getElementById('select-new-folder');
+      const selectMove = document.getElementById('move-folder-select');
+      const selectEdit = document.getElementById('select-edit-folder');
+
+      selectNew.innerHTML = '';
+      selectMove.innerHTML = '';
+      selectEdit.innerHTML = '';
+
+      allFolders.forEach(f => {
+        selectNew.innerHTML += `<option value="${f.id}">${f.name}</option>`;
+        selectMove.innerHTML += `<option value="${f.id}">${f.name}</option>`;
+        selectEdit.innerHTML += `<option value="${f.id}">${f.name}</option>`;
+      });
+    }
+
+    function handleHashRouting() {
+      const hash = window.location.hash || '#/';
+      const parts = hash.replace(/^#\//, '').split('/');
+
+      const viewHome = document.getElementById('view-home');
+      const viewFolder = document.getElementById('view-folder');
+      const viewCanvas = document.getElementById('view-canvas');
+      const bcFolder = document.getElementById('bc-folder');
+      const bcDoc = document.getElementById('bc-doc');
+      const fabContainer = document.getElementById('fab-container');
+
+      if (parts[0] === '' || parts[0] === '#') {
+        viewHome.classList.remove('hidden');
+        viewFolder.classList.add('hidden');
+        viewCanvas.classList.add('hidden');
+        bcFolder.classList.add('hidden');
+        bcDoc.classList.add('hidden');
+        if (fabContainer) fabContainer.classList.add('hidden');
+      } else if (parts[0] === 'folder' && parts[1]) {
+        activeFolderId = parts[1];
+        viewHome.classList.add('hidden');
+        viewFolder.classList.remove('hidden');
+        viewCanvas.classList.add('hidden');
+        bcFolder.classList.remove('hidden');
+        bcDoc.classList.add('hidden');
+        if (fabContainer) fabContainer.classList.add('hidden');
+        loadFolderContents(activeFolderId);
+      } else if (parts[0] === 'doc' && parts[1]) {
+        viewHome.classList.add('hidden');
+        viewFolder.classList.add('hidden');
+        viewCanvas.classList.remove('hidden');
+        bcFolder.classList.remove('hidden');
+        bcDoc.classList.remove('hidden');
+        if (fabContainer) fabContainer.classList.remove('hidden');
+        loadDocumentCanvas(parts[1]);
+      }
+    }
+
+    function navigateHome() { window.location.hash = '#/'; }
+    function navigateCurrentFolder() { if (activeFolderId) window.location.hash = `#/folder/${activeFolderId}`; }
+
+    // SMART ACTION BUTTON (SIMPAN MANUAL DI CANVAS / REFRESH DI HOME)
+    async function handleSyncOrSave() {
+      const hash = window.location.hash || '#/';
+      const parts = hash.replace(/^#\//, '').split('/');
+
+      if (parts[0] === 'doc' && parts[1]) {
+        await forceManualSave();
+      } else {
+        await refreshCurrentView();
+      }
+    }
+
+    async function forceManualSave() {
+      if (!isAuthorMode || !currentDoc) return;
+      clearTimeout(saveTimeout);
+      const refreshIcon = document.getElementById('brand-refresh-icon');
+      if (refreshIcon) refreshIcon.classList.add('fa-spin');
+      setSyncStatus('Menyimpan...', 'text-amber-400');
+
+      currentDoc.title = document.getElementById('doc-title-input').value || 'Untitled';
+      currentDoc.blocks = serializeBlocks();
+
+      try {
+        const res = await fetch(`/api/docs/${currentDoc.driveFileId}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(currentDoc),
+        });
+
+        if (!res.ok) throw new Error('Gagal simpan');
+
+        document.getElementById('bc-doc-title').innerText = currentDoc.title;
+        setSyncStatus('Tersimpan!', 'text-emerald-400 font-semibold');
+        setTimeout(() => setSyncStatus('All synced', 'text-[#555]'), 1200);
+      } catch (err) {
+        setSyncStatus('Gagal simpan!', 'text-red-500');
+      } finally {
+        if (refreshIcon) setTimeout(() => refreshIcon.classList.remove('fa-spin'), 400);
+      }
+    }
+
+    async function refreshCurrentView() {
+      const refreshIcon = document.getElementById('brand-refresh-icon');
+      if (refreshIcon) refreshIcon.classList.add('fa-spin');
+      setSyncStatus('Memperbarui...', 'text-amber-400');
+
+      const hash = window.location.hash || '#/';
+      const parts = hash.replace(/^#\//, '').split('/');
+
+      try {
+        if (parts[0] === '' || parts[0] === '#') {
+          await fetchFolders(true);
+        } else if (parts[0] === 'folder' && parts[1]) {
+          await loadFolderContents(parts[1]);
+        }
+      } catch (err) {
+      } finally {
+        setTimeout(() => {
+          if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+          setSyncStatus('All synced', 'text-[#555]');
+        }, 400);
+      }
+    }
+
+    async function loadFolderContents(folderId) {
+      const folder = allFolders.find(f => f.id === folderId);
+      const name = folder ? folder.name : 'Folder Materi';
+      const icon = folder ? (folder.icon || getFolderDefaultIcon(folder.name)) : 'folder';
+
+      document.getElementById('folder-name-text').innerText = name;
+      document.getElementById('folder-icon-badge').innerHTML = renderIconHTML(icon, "w-5 h-5");
+      document.querySelector('#bc-folder span:last-child').innerText = name;
+
+      const container = document.getElementById('doc-list-container');
+      container.innerHTML = '<div class="text-xs text-[#555] py-6 text-center">Memuat dokumen...</div>';
+
+      try {
+        const res = await fetch(`/api/folders/${folderId}/files`);
+        const files = await res.json();
+        container.innerHTML = '';
+
+        if (files.length === 0) {
+          container.innerHTML = `<div class="text-xs text-[#555] py-12 text-center">Belum ada catatan materi di sini.${isAuthorMode ? '<br>Klik tombol <b>Dokumen Baru</b> untuk mulai menulis.' : ''}</div>`;
+          return;
+        }
+
+        container.className = 'space-y-0.5 border-t border-[#242424]';
+        files.forEach(file => {
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between py-2.5 px-2 border-b border-[#242424] hover:bg-[#202020] cursor-pointer transition select-none group';
+          row.innerHTML = `
+            <div class="flex items-center gap-2.5 min-w-0 flex-1" onclick="window.location.hash='#/doc/${file.id}'">
+              <span class="text-emerald-400 shrink-0 flex items-center">${renderIconHTML(file.icon, "w-4 h-4")}</span>
+              <span class="text-sm font-normal text-[#ccc] group-hover:text-white truncate">${file.name}</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-[#555] shrink-0 ml-2">
+              <span class="text-[11px] hidden sm:inline">${new Date(file.modifiedTime).toLocaleDateString()}</span>
+              ${isAuthorMode ? `
+                <button onclick="openEditDocModal('${file.id}', '${file.name}', '${file.icon}', '${folderId}', event)" 
+                        class="hover:text-sky-400 p-1.5 transition" title="Edit Catatan & Icon">
+                  <i class="fa-solid fa-pen-to-square text-xs"></i>
+                </button>
+                <button onclick="deleteDocument('${file.id}', event)" class="hover:text-red-400 p-1.5 transition" title="Hapus">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+              ` : ''}
+            </div>
+          `;
+          container.appendChild(row);
+        });
+        refreshLucideIcons();
+      } catch (err) {
+        container.innerHTML = '<div class="text-xs text-red-400 py-4">Gagal memuat catatan materi.</div>';
+      }
+    }
+
+    async function loadDocumentCanvas(docId) {
+      setSyncStatus('Memuat...', 'text-amber-500');
+      try {
+        const res = await fetch(`/api/docs/${docId}`);
+        currentDoc = await res.json();
+        currentDoc.driveFileId = docId;
+
+        document.getElementById('doc-title-input').value = currentDoc.title || '';
+        document.getElementById('bc-doc-title').innerText = currentDoc.title || 'Untitled';
+        
+        updateCanvasIconDisplay(currentDoc.icon || 'file-text');
+
+        if (currentDoc.folderId) {
+          document.getElementById('move-folder-select').value = currentDoc.folderId;
+        }
+
+        if (currentDoc.cover) {
+          document.getElementById('cover-img').src = currentDoc.cover;
+          document.getElementById('cover-wrap').classList.remove('hidden');
+        } else {
+          document.getElementById('cover-wrap').classList.add('hidden');
+        }
+
+        renderBlocks(currentDoc.blocks || []);
+        buildTOC();
+        setSyncStatus('All synced', 'text-[#555]');
+      } catch (err) {
+        console.error('Error loading doc:', err);
+      }
+    }
+
+    function updateCanvasIconDisplay(iconName) {
+      const wrap = document.getElementById('doc-icon-rendered');
+      wrap.innerHTML = renderIconHTML(iconName, "w-8 h-8 text-emerald-400");
+      refreshLucideIcons();
+    }
+
+    function handleCanvasIconClick() {
+      if (isAuthorMode) openLucidePicker(onCanvasIconSelected);
+    }
+
+    function onCanvasIconSelected(iconName) {
+      if (!currentDoc) return;
+      currentDoc.icon = iconName;
+      updateCanvasIconDisplay(iconName);
+      queueAutoSave();
+    }
+
+    // ================= NOTION COVER ENGINE =================
+    function openCoverPickerModal() {
+      if (!isAuthorMode) return;
+      document.getElementById('modal-cover-picker').classList.remove('hidden');
+      switchCoverTab('presets');
+    }
+
+    function closeCoverPickerModal() {
+      document.getElementById('modal-cover-picker').classList.add('hidden');
+    }
+
+    function switchCoverTab(tabName) {
+      document.getElementById('cover-tab-presets').classList.add('hidden');
+      document.getElementById('cover-tab-url').classList.add('hidden');
+      document.getElementById('cover-tab-ai').classList.add('hidden');
+
+      const tabs = ['presets', 'url', 'ai'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === tabName) {
+          btn.className = 'cover-tab-btn px-3 py-1.5 rounded-lg bg-[#2b2b2b] text-white font-medium';
+        } else {
+          btn.className = 'cover-tab-btn px-3 py-1.5 rounded-lg text-[#888] hover:text-white';
+        }
+      });
+
+      if (tabName === 'presets') document.getElementById('cover-tab-presets').classList.remove('hidden');
+      if (tabName === 'url') {
+        document.getElementById('cover-tab-url').classList.remove('hidden');
+        document.getElementById('input-cover-direct-url').focus();
+      }
+      if (tabName === 'ai') {
+        document.getElementById('cover-tab-ai').classList.remove('hidden');
+        document.getElementById('input-cover-ai-prompt').focus();
+      }
+    }
+
+    function applyCoverFromUrl(url) {
+      if (!currentDoc) return;
+      currentDoc.cover = url;
+      document.getElementById('cover-img').src = url;
+      document.getElementById('cover-wrap').classList.remove('hidden');
+      closeCoverPickerModal();
+      queueAutoSave();
+    }
+
+    function submitDirectCoverUrl() {
+      const url = document.getElementById('input-cover-direct-url').value.trim();
+      if (!url) return alert('Silakan masukkan link gambar publik terlebih dahulu');
+      applyCoverFromUrl(url);
+    }
+
+    function generateAICover() {
+      const prompt = document.getElementById('input-cover-ai-prompt').value.trim() || 'futuristic datacenter network server dark aesthetic';
+      const btn = document.getElementById('btn-generate-ai');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Sedang membuat cover AI...';
+      btn.disabled = true;
+
+      const seed = Math.floor(Math.random() * 999999);
+      const aiUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1200&height=400&nologo=true&seed=${seed}`;
+
+      const previewBox = document.getElementById('ai-preview-box');
+      const previewImg = document.getElementById('ai-preview-img');
+
+      previewImg.onload = () => {
+        generatedAICoverUrl = aiUrl;
+        previewBox.classList.remove('hidden');
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Generate Ulang';
+        btn.disabled = false;
+      };
+      previewImg.onerror = () => {
+        alert('Gagal membuat gambar AI');
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Generate Cover dengan AI';
+        btn.disabled = false;
+      };
+
+      previewImg.src = aiUrl;
+    }
+
+    function applyAICover() {
+      if (generatedAICoverUrl) applyCoverFromUrl(generatedAICoverUrl);
+    }
+
+    function removeCover() {
+      if (!isAuthorMode || !currentDoc) return;
+      currentDoc.cover = null;
+      document.getElementById('cover-wrap').classList.add('hidden');
+      queueAutoSave();
+    }
+
+    // ================= FAB ENGINE =================
+    function toggleFabMenu() { document.getElementById('fab-menu').classList.toggle('hidden'); }
+    function hideFabMenu() {
+      const menu = document.getElementById('fab-menu');
+      if (menu) menu.classList.add('hidden');
+    }
+
+    function addBlockFromFab(type) {
+      hideFabMenu();
+      let newBlock = { id: 'b_' + Date.now(), type };
+
+      switch (type) {
+        case 'table':
+          newBlock.headers = ['Kolom 1', 'Kolom 2', 'Kolom 3'];
+          newBlock.rows = [['', '', ''], ['', '', '']];
+          break;
+        case 'vscode-code':
+          newBlock.lang = 'javascript';
+          newBlock.filename = '';
+          newBlock.content = '';
+          break;
+        case 'numbered-list':
+          newBlock.items = [{ num: '1.', text: '' }, { num: '2.', text: '' }];
+          break;
+        case 'bullet-list':
+          newBlock.items = [{ text: '' }, { text: '' }];
+          break;
+        case 'callout':
+          newBlock.icon = '💡';
+          newBlock.content = '';
+          break;
+        case 'toggle-accordion':
+          newBlock.title = '';
+          newBlock.content = '';
+          break;
+        case 'file-card':
+          newBlock.displayName = '';
+          newBlock.fileName = '';
+          newBlock.fileId = '';
+          break;
+        case 'kbd-shortcut':
+          newBlock.keys = 'Ctrl + Alt + T';
+          newBlock.desc = '';
+          break;
+        default:
+          newBlock.content = '';
+      }
+
+      const dom = createBlockDOM(newBlock);
+      document.getElementById('blocks-container').appendChild(dom);
+
+      const editable = dom.querySelector('[contenteditable="true"], input');
+      if (editable) editable.focus();
+
+      queueAutoSave();
+      buildTOC();
+    }
+
+    // ================= RENDER DYNAMIC BLOCKS =================
+    function renderBlocks(blocks) {
+      const container = document.getElementById('blocks-container');
+      container.innerHTML = '';
+
+      if (!blocks || blocks.length === 0) {
+        blocks = [{ id: 'b_' + Date.now(), type: 'paragraph', content: '' }];
+      }
+
+      blocks.forEach(block => {
+        container.appendChild(createBlockDOM(block));
+      });
+
+      refreshLucideIcons();
+    }
+
+    function createBlockDOM(block) {
+      const row = document.createElement('div');
+      row.className = 'group flex items-start gap-1 relative py-1 w-full';
+      row.dataset.id = block.id;
+      row.dataset.type = block.type;
+
+      if (isAuthorMode) {
+        const deleteHandle = document.createElement('button');
+        deleteHandle.type = 'button';
+        deleteHandle.className = 'opacity-0 group-hover:opacity-100 p-1 text-[#555] hover:text-red-400 text-xs transition mr-1 mt-1';
+        deleteHandle.title = 'Hapus blok';
+        deleteHandle.innerHTML = '<i class="fa-regular fa-trash-can"></i>';
+        deleteHandle.onclick = () => {
+          row.remove();
+          queueAutoSave();
+          buildTOC();
+        };
+        row.appendChild(deleteHandle);
+      }
+
+      let contentEl;
+
+      switch (block.type) {
+        case 'table':
+          const tableBox = document.createElement('div');
+          tableBox.className = 'table-block-wrap w-full my-2 overflow-hidden border border-[#2a2a2a] rounded-xl bg-[#1c1c1c]';
+          const headers = block.headers || ['Kolom 1', 'Kolom 2', 'Kolom 3'];
+          const rows = block.rows || [['', '', '']];
+
+          tableBox.innerHTML = `
+            <div class="p-2 bg-[#181818] border-b border-[#282828] flex flex-wrap items-center justify-between gap-2 text-xs select-none ${isAuthorMode ? '' : 'hidden'}">
+              <span class="text-[11px] font-semibold text-purple-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-table"></i> Tabel Dinamis
+              </span>
+              <div class="flex items-center gap-1">
+                <button type="button" onclick="addTableRow(this)" class="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#333] text-[#bbb] hover:text-white border border-[#333] transition">+ Baris</button>
+                <button type="button" onclick="removeTableRow(this)" class="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#333] text-[#bbb] hover:text-red-300 border border-[#333] transition">- Baris</button>
+                <button type="button" onclick="addTableColumn(this)" class="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#333] text-[#bbb] hover:text-white border border-[#333] transition ml-1">+ Kolom</button>
+                <button type="button" onclick="removeTableColumn(this)" class="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#333] text-[#bbb] hover:text-red-300 border border-[#333] transition">- Kolom</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto w-full">
+              <table class="w-full text-xs text-left border-collapse min-w-[380px]">
+                <thead class="bg-[#202020] text-[#999] border-b border-[#282828]">
+                  <tr>
+                    ${headers.map(h => `<th contenteditable="${isAuthorMode}" class="p-2.5 font-semibold outline-none border-r border-[#262626] last:border-r-0" data-placeholder="Nama Kolom">${h}</th>`).join('')}
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#242424] text-[#d4d4d4]">
+                  ${rows.map(r => `
+                    <tr>
+                      ${r.map(cell => `<td contenteditable="${isAuthorMode}" class="p-2.5 outline-none border-r border-[#242424] last:border-r-0" data-placeholder="Ketik data...">${cell}</td>`).join('')}
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+          tableBox.addEventListener('input', () => queueAutoSave());
+          row.appendChild(tableBox);
+          return row;
+
+        case 'paragraph':
+          contentEl = createEditableEl('p', 'flex-1 text-sm sm:text-base text-[#d4d4d4] leading-relaxed outline-none w-full', 'Ketik teks materi... (gunakan #point# untuk badge)', block.content);
+          attachInputEvents(contentEl);
+          row.appendChild(contentEl);
+          return row;
+
+        case 'image':
+          row.dataset.url = block.url || '';
+          renderImageBlock(row, block);
+          return row;
+
+        case 'vscode-code':
+          const currentLang = block.lang || 'javascript';
+          const vsBox = document.createElement('div');
+          vsBox.className = 'vscode-window w-full my-2 font-mono text-xs border border-[#2d2d2d] rounded-xl overflow-hidden shadow-2xl bg-[#1e1e1e]';
+          const visuals = getLangVisuals(currentLang);
+
+          vsBox.innerHTML = `
+            <div class="vscode-header bg-[#252526] border-b border-[#2d2d2d] px-3 py-2 flex items-center justify-between select-none">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="lang-icon-badge flex items-center text-sm">${visuals.icon}</span>
+                <input type="text" value="${block.filename || ''}" 
+                       ${isAuthorMode ? '' : 'readonly'}
+                       class="vscode-filename-input bg-transparent text-[11px] text-[#888] outline-none border-none p-0 max-w-[160px] truncate" placeholder="nama_file.ext">
+                <select ${isAuthorMode ? '' : 'disabled'} class="vscode-lang-select bg-[#1a1a1a] border border-[#3a3a3a] text-gray-200 text-[10px] rounded px-2 py-0.5 outline-none cursor-pointer">
+                  <option value="javascript" ${currentLang === 'javascript' ? 'selected' : ''}>JavaScript</option>
+                  <option value="html" ${currentLang === 'html' ? 'selected' : ''}>HTML</option>
+                  <option value="css" ${currentLang === 'css' ? 'selected' : ''}>CSS</option>
+                  <option value="python" ${currentLang === 'python' ? 'selected' : ''}>Python</option>
+                  <option value="bash" ${currentLang === 'bash' ? 'selected' : ''}>Bash / Shell</option>
+                  <option value="sql" ${currentLang === 'sql' ? 'selected' : ''}>SQL</option>
+                  <option value="json" ${currentLang === 'json' ? 'selected' : ''}>JSON</option>
+                  <option value="cpp" ${currentLang === 'cpp' ? 'selected' : ''}>C++</option>
+                  <option value="php" ${currentLang === 'php' ? 'selected' : ''}>PHP</option>
+                </select>
+              </div>
+              <button onclick="copyElementText(this)" class="bg-[#2a2a2a] hover:bg-[#333] text-[#aaa] hover:text-white px-2.5 py-1 rounded text-[10px] transition shrink-0 flex items-center gap-1.5 border border-[#3a3a3a]">
+                <i class="fa-regular fa-copy"></i> Copy
+              </button>
+            </div>
+            <div class="p-3.5 bg-[#1e1e1e] overflow-x-auto">
+              <pre contenteditable="${isAuthorMode}" class="vscode-code-content outline-none whitespace-pre font-mono text-xs text-[#d4d4d4] leading-relaxed hljs" data-placeholder="// Tulis atau paste source code di sini..."></pre>
+            </div>
+          `;
+          
+          const codeEl = vsBox.querySelector('.vscode-code-content');
+          const langSelect = vsBox.querySelector('.vscode-lang-select');
+          const iconBadge = vsBox.querySelector('.lang-icon-badge');
+          const fileInput = vsBox.querySelector('.vscode-filename-input');
+
+          if (block.content) {
+            codeEl.innerText = block.content;
+            applyCodeHighlight(codeEl, currentLang);
+          }
+
+          langSelect.addEventListener('change', () => {
+            const newLang = langSelect.value;
+            iconBadge.innerHTML = getLangVisuals(newLang).icon;
+            applyCodeHighlight(codeEl, newLang);
+            queueAutoSave();
+          });
+
+          fileInput.addEventListener('input', () => queueAutoSave());
+          codeEl.addEventListener('input', () => queueAutoSave());
+          codeEl.addEventListener('blur', () => {
+            applyCodeHighlight(codeEl, langSelect.value);
+            queueAutoSave();
+          });
+
+          row.appendChild(vsBox);
+          return row;
+
+        case 'heading-1':
+          contentEl = createEditableEl('h1', 'text-xl sm:text-2xl font-bold text-white mt-3 mb-1 outline-none w-full leading-snug', 'Heading 1...', block.content);
+          attachInputEvents(contentEl);
+          row.appendChild(contentEl);
+          return row;
+
+        case 'heading-2':
+          contentEl = createEditableEl('h2', 'text-lg sm:text-xl font-semibold text-white mt-2 mb-0.5 outline-none w-full leading-snug', 'Heading 2...', block.content);
+          attachInputEvents(contentEl);
+          row.appendChild(contentEl);
+          return row;
+
+        case 'heading-3':
+          contentEl = createEditableEl('h3', 'text-base sm:text-lg font-medium text-[#eee] mt-1.5 mb-0.5 outline-none w-full leading-snug', 'Heading 3...', block.content);
+          attachInputEvents(contentEl);
+          row.appendChild(contentEl);
+          return row;
+
+        case 'numbered-list':
+          const numBox = document.createElement('div');
+          numBox.className = 'numbered-list-wrap w-full my-1.5 space-y-1';
+          const items = block.items || [{ num: '1.', text: '' }];
+
+          numBox.innerHTML = `
+            <div class="flex items-center justify-between text-xs text-[#777] mb-1 ${isAuthorMode ? '' : 'hidden'}">
+              <span class="text-[10px] uppercase font-bold text-amber-500/80">List Nomor Urut</span>
+              <button type="button" onclick="addNumberedItem(this)" class="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#333] text-[#bbb] hover:text-white border border-[#333] transition text-[11px]">+ Tambah Baris</button>
+            </div>
+            <div class="list-container space-y-1.5">
+              ${items.map(it => `
+                <div class="flex items-start gap-2 group/item">
+                  <span contenteditable="${isAuthorMode}" class="num-prefix font-mono text-amber-400 font-semibold outline-none select-none text-sm min-w-[24px]" data-placeholder="#">${it.num || '1.'}</span>
+                  <div contenteditable="${isAuthorMode}" class="item-text flex-1 outline-none text-sm text-[#d4d4d4]" data-placeholder="Ketik poin penjelasan... (gunakan #point#)">${it.text || ''}</div>
+                  <button type="button" onclick="removeListItem(this)" class="opacity-0 group-hover/item:opacity-100 text-[#555] hover:text-red-400 text-xs p-0.5 transition ${isAuthorMode ? '' : 'hidden'}"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              `).join('')}
+            </div>
+          `;
+          numBox.addEventListener('input', () => queueAutoSave());
+          row.appendChild(numBox);
+          return row;
+
+        case 'bullet-list':
+          const bulletBox = document.createElement('div');
+          bulletBox.className = 'bullet-list-wrap w-full my-1.5 space-y-1';
+          const bItems = block.items || [{ text: '' }];
+
+          bulletBox.innerHTML = `
+            <div class="flex items-center justify-between text-xs text-[#777] mb-1 ${isAuthorMode ? '' : 'hidden'}">
+              <span class="text-[10px] uppercase font-bold text-amber-500/80">List Titik / Bullet</span>
+              <button type="button" onclick="addBulletItem(this)" class="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#333] text-[#bbb] hover:text-white border border-[#333] transition text-[11px]">+ Tambah Baris</button>
+            </div>
+            <div class="list-container space-y-1.5">
+              ${bItems.map(it => `
+                <div class="flex items-start gap-2 group/item">
+                  <span class="text-amber-400 select-none text-base leading-none mt-0.5">•</span>
+                  <div contenteditable="${isAuthorMode}" class="item-text flex-1 outline-none text-sm text-[#d4d4d4]" data-placeholder="Ketik poin bullet... (gunakan #point#)">${it.text || ''}</div>
+                  <button type="button" onclick="removeListItem(this)" class="opacity-0 group-hover/item:opacity-100 text-[#555] hover:text-red-400 text-xs p-0.5 transition ${isAuthorMode ? '' : 'hidden'}"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              `).join('')}
+            </div>
+          `;
+          bulletBox.addEventListener('input', () => queueAutoSave());
+          row.appendChild(bulletBox);
+          return row;
+
+        case 'callout':
+          const callout = document.createElement('div');
+          callout.className = 'w-full bg-[#202020] border border-[#2c2c2c] rounded-xl p-3.5 flex items-start gap-3 my-1';
+          callout.innerHTML = `
+            <span class="callout-icon text-lg select-none shrink-0 cursor-pointer" onclick="cycleCalloutEmoji(this)">${block.icon || '💡'}</span>
+            <div contenteditable="${isAuthorMode}" class="callout-text outline-none flex-1 text-xs sm:text-sm text-[#d4d4d4]" data-placeholder="Ketik tips atau peringatan...">${block.content || ''}</div>
+          `;
+          callout.querySelector('.callout-text').addEventListener('input', () => queueAutoSave());
+          row.appendChild(callout);
+          return row;
+
+        case 'divider':
+          const hr = document.createElement('div');
+          hr.className = 'w-full h-[1px] bg-[#2a2a2a] my-3 select-none';
+          row.appendChild(hr);
+          return row;
+
+        case 'toggle-accordion':
+          const accBox = document.createElement('div');
+          accBox.className = 'w-full my-2 border border-[#2c2c2c] rounded-xl bg-[#1a1a1a] overflow-hidden';
+          accBox.innerHTML = `
+            <div class="flex items-center justify-between p-3 cursor-pointer select-none bg-[#202020] hover:bg-[#232323] transition" onclick="toggleAccordion(this)">
+              <div class="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                <i class="fa-solid fa-chevron-right text-xs text-indigo-400 accordion-chevron transition-transform duration-200"></i>
+                <div contenteditable="${isAuthorMode}" onclick="event.stopPropagation()" class="acc-title outline-none text-sm font-semibold text-white flex-1 truncate" data-placeholder="Judul Analisis / Troubleshooting (Klik untuk Buka-Tutup)">${block.title || ''}</div>
+              </div>
+              <span class="text-[10px] text-[#666] font-mono shrink-0">Toggle</span>
+            </div>
+            <div class="accordion-content hidden p-3.5 border-t border-[#252525] bg-[#161616]">
+              <div contenteditable="${isAuthorMode}" class="acc-body outline-none text-sm text-[#ccc] leading-relaxed" data-placeholder="Tulis solusi troubleshooting atau kunci jawaban di sini...">${block.content || ''}</div>
+            </div>
+          `;
+          accBox.addEventListener('input', () => queueAutoSave());
+          row.appendChild(accBox);
+          return row;
+
+        case 'file-card':
+          row.dataset.fileName = block.fileName || '';
+          row.dataset.fileId = block.fileId || '';
+          renderLabFileBlock(row, block);
+          return row;
+
+        case 'kbd-shortcut':
+          const kbdBox = document.createElement('div');
+          kbdBox.className = 'w-full my-2 p-3 bg-[#1e1e1e] border border-[#2c2c2c] rounded-xl flex items-center justify-between flex-wrap gap-2';
+          kbdBox.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-[#888] font-medium">Shortcut:</span>
+              <span class="kbd-key" contenteditable="${isAuthorMode}" data-placeholder="Ctrl + Alt + T">${block.keys || 'Ctrl + Alt + T'}</span>
+            </div>
+            <div contenteditable="${isAuthorMode}" class="kbd-desc text-xs text-[#bbb] outline-none flex-1 min-w-[150px]" data-placeholder="Keterangan fungsi shortcut...">${block.desc || ''}</div>
+          `;
+          kbdBox.addEventListener('input', () => queueAutoSave());
+          row.appendChild(kbdBox);
+          return row;
+
+        default:
+          contentEl = createEditableEl('p', 'flex-1 text-sm sm:text-base text-[#d4d4d4] leading-relaxed outline-none w-full', 'Ketik teks materi...', block.content);
+          attachInputEvents(contentEl);
+          row.appendChild(contentEl);
+          return row;
+      }
+    }
+
+    function createEditableEl(tag, classes, placeholder, content) {
+      const el = document.createElement(tag);
+      el.className = classes;
+      el.contentEditable = isAuthorMode;
+      el.setAttribute('data-placeholder', placeholder);
+      el.innerHTML = content || '';
+      return el;
+    }
+
+    function attachInputEvents(el) {
+      el.addEventListener('input', () => {
+        queueAutoSave();
+        buildTOC();
+      });
+
+      el.addEventListener('blur', () => {
+        if (el.innerText.includes('#')) {
+          el.innerHTML = formatInlineTokens(el.innerText);
+          queueAutoSave();
+        }
+      });
+
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && isAuthorMode) {
+          e.preventDefault();
+          const newBlock = { id: 'b_' + Date.now(), type: 'paragraph', content: '' };
+          const newDOM = createBlockDOM(newBlock);
+          el.closest('[data-id]').after(newDOM);
+          newDOM.querySelector('[contenteditable="true"]').focus();
+          queueAutoSave();
+        }
+      });
+    }
+
+    function addNumberedItem(btn) {
+      const wrap = btn.closest('.numbered-list-wrap');
+      const container = wrap.querySelector('.list-container');
+      const count = container.children.length + 1;
+      const item = document.createElement('div');
+      item.className = 'flex items-start gap-2 group/item';
+      item.innerHTML = `
+        <span contenteditable="${isAuthorMode}" class="num-prefix font-mono text-amber-400 font-semibold outline-none select-none text-sm min-w-[24px]">${count}.</span>
+        <div contenteditable="${isAuthorMode}" class="item-text flex-1 outline-none text-sm text-[#d4d4d4]" data-placeholder="Ketik poin penjelasan..."></div>
+        <button type="button" onclick="removeListItem(this)" class="opacity-0 group-hover/item:opacity-100 text-[#555] hover:text-red-400 text-xs p-0.5 transition"><i class="fa-solid fa-xmark"></i></button>
+      `;
+      container.appendChild(item);
+      item.querySelector('.item-text').focus();
+      queueAutoSave();
+    }
+
+    function addBulletItem(btn) {
+      const wrap = btn.closest('.bullet-list-wrap');
+      const container = wrap.querySelector('.list-container');
+      const item = document.createElement('div');
+      item.className = 'flex items-start gap-2 group/item';
+      item.innerHTML = `
+        <span class="text-amber-400 select-none text-base leading-none mt-0.5">•</span>
+        <div contenteditable="${isAuthorMode}" class="item-text flex-1 outline-none text-sm text-[#d4d4d4]" data-placeholder="Ketik poin bullet..."></div>
+        <button type="button" onclick="removeListItem(this)" class="opacity-0 group-hover/item:opacity-100 text-[#555] hover:text-red-400 text-xs p-0.5 transition"><i class="fa-solid fa-xmark"></i></button>
+      `;
+      container.appendChild(item);
+      item.querySelector('.item-text').focus();
+      queueAutoSave();
+    }
+
+    function removeListItem(btn) {
+      const row = btn.closest('.group\\/item');
+      const container = row.parentElement;
+      if (container.children.length > 1) {
+        row.remove();
+        queueAutoSave();
+      }
+    }
+
+    function toggleAccordion(header) {
+      const content = header.nextElementSibling;
+      const chevron = header.querySelector('.accordion-chevron');
+      content.classList.toggle('hidden');
+      chevron.classList.toggle('rotate-90');
+    }
+
+    function cycleCalloutEmoji(el) {
+      if (!isAuthorMode) return;
+      const emojis = ['💡', '⚠️', '🔥', '📌', '🎯', '✅', '🔒'];
+      const cur = el.innerText;
+      el.innerText = emojis[(emojis.indexOf(cur) + 1) % emojis.length];
+      queueAutoSave();
+    }
+
+    function addTableRow(btn) {
+      const wrap = btn.closest('.table-block-wrap');
+      const table = wrap.querySelector('table');
+      const tbody = table.querySelector('tbody');
+      const colCount = table.querySelectorAll('thead th').length;
+      
+      const tr = document.createElement('tr');
+      for (let i = 0; i < colCount; i++) {
+        tr.innerHTML += `<td contenteditable="${isAuthorMode}" class="p-2.5 outline-none border-r border-[#242424] last:border-r-0" data-placeholder="Ketik data..."></td>`;
+      }
+      tbody.appendChild(tr);
+      queueAutoSave();
+    }
+
+    function removeTableRow(btn) {
+      const wrap = btn.closest('.table-block-wrap');
+      const tbody = wrap.querySelector('table tbody');
+      if (tbody.children.length > 1) {
+        tbody.lastElementChild.remove();
+        queueAutoSave();
+      }
+    }
+
+    function addTableColumn(btn) {
+      const wrap = btn.closest('.table-block-wrap');
+      const table = wrap.querySelector('table');
+      const headerTr = table.querySelector('thead tr');
+      const rows = table.querySelectorAll('tbody tr');
+
+      const colIndex = headerTr.children.length + 1;
+      const th = document.createElement('th');
+      th.className = 'p-2.5 font-semibold outline-none border-r border-[#262626] last:border-r-0';
+      th.contentEditable = isAuthorMode;
+      th.setAttribute('data-placeholder', 'Nama Kolom');
+      th.innerText = `Kolom ${colIndex}`;
+      headerTr.appendChild(th);
+
+      rows.forEach(tr => {
+        const td = document.createElement('td');
+        td.className = 'p-2.5 outline-none border-r border-[#242424] last:border-r-0';
+        td.contentEditable = isAuthorMode;
+        td.setAttribute('data-placeholder', 'Ketik data...');
+        tr.appendChild(td);
+      });
+      queueAutoSave();
+    }
+
+    function removeTableColumn(btn) {
+      const wrap = btn.closest('.table-block-wrap');
+      const table = wrap.querySelector('table');
+      const headerTr = table.querySelector('thead tr');
+      const rows = table.querySelectorAll('tbody tr');
+
+      if (headerTr.children.length > 1) {
+        headerTr.lastElementChild.remove();
+        rows.forEach(tr => {
+          if (tr.lastElementChild) tr.lastElementChild.remove();
+        });
+        queueAutoSave();
+      }
+    }
+
+    function renderImageBlock(row, block) {
+      row.innerHTML = '';
+      if (!block.url) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'w-full p-8 border border-dashed border-[#333] hover:border-emerald-500/60 rounded-xl text-center cursor-pointer text-xs text-[#777] transition bg-[#1a1a1a]/50';
+        placeholder.innerHTML = '<i class="fa-solid fa-image text-3xl mb-2 block text-emerald-400"></i> Upload Screenshot (Full Width 100%)';
+        placeholder.onclick = () => {
+          if (!isAuthorMode) return;
+          pendingUploadImageBlock = row;
+          document.getElementById('global-image-uploader').click();
+        };
+        row.appendChild(placeholder);
+      } else {
+        const wrap = document.createElement('div');
+        wrap.className = 'w-full my-2 relative group';
+        wrap.innerHTML = `<img src="${block.url}" onclick="openLightbox('${block.url}')" class="img-block-full cursor-zoom-in shadow-xl">`;
+        row.appendChild(wrap);
+      }
+    }
+
+    function renderLabFileBlock(row, block) {
+      row.innerHTML = '';
+      if (!block.fileId) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'w-full p-8 border border-dashed border-[#333] hover:border-teal-500/60 rounded-xl text-center cursor-pointer text-xs text-[#777] transition bg-[#1a1a1a]/50';
+        placeholder.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-3xl mb-2 block text-teal-400"></i> Klik untuk upload berkas (.pkt, .rsc, .zip, .pdf, dll)';
+        placeholder.onclick = () => {
+          if (!isAuthorMode) return;
+          pendingUploadLabBlock = row;
+          document.getElementById('global-lab-uploader').click();
+        };
+        row.appendChild(placeholder);
+      } else {
+        const card = document.createElement('div');
+        card.className = 'w-full my-2 p-3.5 rounded-xl border border-[#2d2d2d] bg-[#1e1e1e] flex items-center justify-between gap-3 shadow-lg select-none';
+        const currentTitle = block.displayName || block.fileName || 'Berkas Praktikum';
+
+        card.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0 flex-1">
+            <div class="w-10 h-10 rounded-lg bg-teal-950/60 border border-teal-800 text-teal-400 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-paperclip text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <input type="text" value="${currentTitle}" 
+                     ${isAuthorMode ? '' : 'readonly'}
+                     class="lab-display-name text-sm font-semibold bg-transparent text-white border-b border-transparent focus:border-teal-500 outline-none w-full" 
+                     placeholder="Ketik judul berkas praktikum...">
+            </div>
+          </div>
+          <button type="button" onclick="downloadLabFile('${block.fileId}', this.closest('.w-full').querySelector('.lab-display-name')?.value || '${block.fileName}', this)" 
+                  class="px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shrink-0 ml-2">
+            <i class="fa-solid fa-download text-[10px]"></i> Unduh
+          </button>
+        `;
+
+        card.querySelector('.lab-display-name').addEventListener('input', () => queueAutoSave());
+        row.appendChild(card);
+      }
+    }
+
+    function downloadLabFile(fileId, customName, btn) {
+      if (!fileId) return;
+      const origHtml = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> Mengunduh...';
+      btn.disabled = true;
+
+      try {
+        const downloadUrl = `/api/download/${fileId}?name=${encodeURIComponent(customName || 'file')}`;
+        const tempLink = document.createElement('a');
+        tempLink.href = downloadUrl;
+        tempLink.setAttribute('download', customName || 'file');
+        document.body.appendChild(tempLink);
+        tempLink.click();
+        document.body.removeChild(tempLink);
+      } catch (err) {
+        alert('Gagal mengunduh berkas: ' + err.message);
+      } finally {
+        setTimeout(() => {
+          btn.innerHTML = origHtml;
+          btn.disabled = false;
+        }, 1500);
+      }
+    }
+
+    function openLightbox(url) {
+      document.getElementById('lightbox-img').src = url;
+      document.getElementById('lightbox-overlay').classList.remove('hidden');
+    }
+    function closeLightbox() {
+      document.getElementById('lightbox-overlay').classList.add('hidden');
+    }
+
+    // ================= SERIALIZE & AUTO-SAVE =================
+    function queueAutoSave() {
+      if (!isAuthorMode || !currentDoc) return;
+      setSyncStatus('Menyimpan...', 'text-amber-500');
+
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(async () => {
+        currentDoc.title = document.getElementById('doc-title-input').value || 'Untitled';
+        currentDoc.blocks = serializeBlocks();
+
+        try {
+          await fetch(`/api/docs/${currentDoc.driveFileId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(currentDoc),
+          });
+          setSyncStatus('All synced', 'text-[#555]');
+          document.getElementById('bc-doc-title').innerText = currentDoc.title;
+        } catch (err) {
+          setSyncStatus('Gagal simpan', 'text-red-500');
+        }
+      }, 800);
+    }
+
+    function serializeBlocks() {
+      const rows = document.querySelectorAll('#blocks-container > div');
+      const blocks = [];
+
+      rows.forEach(r => {
+        const type = r.dataset.type;
+        const id = r.dataset.id;
+
+        if (type === 'table') {
+          const headers = Array.from(r.querySelectorAll('thead th')).map(th => th.innerText);
+          const trs = r.querySelectorAll('tbody tr');
+          const tableData = [];
+          trs.forEach(tr => {
+            tableData.push(Array.from(tr.querySelectorAll('td')).map(td => td.innerText));
+          });
+          blocks.push({ id, type, headers, rows: tableData });
+        } else if (type === 'vscode-code') {
+          const filename = r.querySelector('.vscode-filename-input')?.value || '';
+          const lang = r.querySelector('.vscode-lang-select')?.value || 'javascript';
+          const content = r.querySelector('.vscode-code-content')?.innerText || '';
+          blocks.push({ id, type, filename, lang, content });
+        } else if (type === 'numbered-list') {
+          const items = [];
+          r.querySelectorAll('.list-container > div').forEach(it => {
+            items.push({
+              num: it.querySelector('.num-prefix')?.innerText || '1.',
+              text: it.querySelector('.item-text')?.innerHTML || ''
+            });
+          });
+          blocks.push({ id, type, items });
+        } else if (type === 'bullet-list') {
+          const items = [];
+          r.querySelectorAll('.list-container > div').forEach(it => {
+            items.push({ text: it.querySelector('.item-text')?.innerHTML || '' });
+          });
+          blocks.push({ id, type, items });
+        } else if (type === 'callout') {
+          const icon = r.querySelector('.callout-icon')?.innerText || '💡';
+          const content = r.querySelector('.callout-text')?.innerHTML || '';
+          blocks.push({ id, type, icon, content });
+        } else if (type === 'toggle-accordion') {
+          const title = r.querySelector('.acc-title')?.innerText || '';
+          const content = r.querySelector('.acc-body')?.innerHTML || '';
+          blocks.push({ id, type, title, content });
+        } else if (type === 'file-card') {
+          const displayName = r.querySelector('.lab-display-name')?.value || '';
+          blocks.push({ 
+            id, 
+            type, 
+            displayName: displayName,
+            fileName: r.dataset.fileName || '', 
+            fileId: r.dataset.fileId || ''
+          });
+        } else if (type === 'kbd-shortcut') {
+          const keys = r.querySelector('.kbd-key')?.innerText || '';
+          const desc = r.querySelector('.kbd-desc')?.innerText || '';
+          blocks.push({ id, type, keys, desc });
+        } else if (type === 'image') {
+          blocks.push({ id, type, url: r.dataset.url || '' });
+        } else {
+          const editable = r.querySelector('[contenteditable="true"]');
+          const content = editable ? editable.innerHTML : '';
+          blocks.push({ id, type, content });
+        }
+      });
+      return blocks;
+    }
+
+    function setSyncStatus(txt, cls) {
+      const el = document.getElementById('save-status');
+      el.innerText = txt;
+      el.className = `hidden md:inline text-xs ${cls}`;
+    }
+
+    function buildTOC() {
+      const headings = document.querySelectorAll('#blocks-container h1, #blocks-container h2, #blocks-container h3');
+      const container = document.getElementById('toc-items');
+      container.innerHTML = '';
+
+      if (headings.length === 0) {
+        container.innerHTML = '<div class="text-[#555]">Belum ada heading.</div>';
+        return;
+      }
+
+      headings.forEach((h, i) => {
+        const id = `heading_anchor_${i}`;
+        h.id = id;
+        const item = document.createElement('div');
+        const pad = h.tagName === 'H3' ? 'pl-4 text-[10px]' : h.tagName === 'H2' ? 'pl-2 text-[11px]' : 'font-medium';
+        item.className = `cursor-pointer hover:text-white truncate ${pad}`;
+        item.innerText = h.innerText || 'Section';
+        item.onclick = () => {
+          h.scrollIntoView({ behavior: 'smooth' });
+          document.getElementById('toc-dropdown').classList.add('hidden');
+        };
+        container.appendChild(item);
+      });
+    }
+
+    function toggleTOC() { document.getElementById('toc-dropdown').classList.toggle('hidden'); }
+
+    function openNewDocModal(defaultFolderId = null) {
+      if (!isAuthorMode) return;
+      if (defaultFolderId) {
+        document.getElementById('select-new-folder').value = defaultFolderId;
+      }
+      document.getElementById('input-new-title').value = '';
+      document.getElementById('modal-new-doc').classList.remove('hidden');
+      document.getElementById('input-new-title').focus();
+    }
+    function closeNewDocModal() { document.getElementById('modal-new-doc').classList.add('hidden'); }
+
+    async function submitNewDoc() {
+      const title = document.getElementById('input-new-title').value.trim() || 'Untitled';
+      const folderId = document.getElementById('select-new-folder').value;
+
+      try {
+        const res = await fetch('/api/docs', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ title, folderId, icon: 'file-text' }),
+        });
+        const doc = await res.json();
+        closeNewDocModal();
+        window.location.hash = `#/doc/${doc.driveFileId}`;
+      } catch (err) {
+        alert('Gagal membuat dokumen di Google Drive');
+      }
+    }
+
+    function openEditDocModal(docId, docTitle, currentIcon, folderId, e) {
+      e.stopPropagation();
+      editingDocId = docId;
+      editingDocFolderId = folderId;
+      selectedEditIcon = currentIcon || 'file-text';
+
+      document.getElementById('input-edit-title').value = docTitle;
+      document.getElementById('select-edit-folder').value = folderId;
+      updateEditModalIconPreview(selectedEditIcon);
+      document.getElementById('modal-edit-doc').classList.remove('hidden');
+    }
+    function closeEditDocModal() {
+      document.getElementById('modal-edit-doc').classList.add('hidden');
+      editingDocId = null;
+    }
+    function updateEditModalIconPreview(iconName) {
+      const el = document.getElementById('preview-edit-icon');
+      el.innerHTML = renderIconHTML(iconName, "w-5 h-5 text-emerald-400");
+      refreshLucideIcons();
+    }
+    function onEditModalIconSelected(iconName) {
+      selectedEditIcon = iconName;
+      updateEditModalIconPreview(iconName);
+    }
+    async function submitEditDoc() {
+      if (!editingDocId) return;
+      const newTitle = document.getElementById('input-edit-title').value.trim() || 'Untitled';
+      const newFolderId = document.getElementById('select-edit-folder').value;
+
+      try {
+        setSyncStatus('Menyimpan perubahan...', 'text-amber-500');
+        const res = await fetch(`/api/docs/${editingDocId}`);
+        const docData = await res.json();
+
+        docData.title = newTitle;
+        docData.icon = selectedEditIcon;
+
+        await fetch(`/api/docs/${editingDocId}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(docData),
+        });
+
+        if (newFolderId && newFolderId !== editingDocFolderId) {
+          await fetch(`/api/docs/${editingDocId}/move`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ currentFolderId: editingDocFolderId, newFolderId }),
+          });
+        }
+
+        closeEditDocModal();
+        loadFolderContents(activeFolderId);
+        setSyncStatus('All synced', 'text-[#555]');
+      } catch (err) {
+        alert('Gagal menyimpan perubahan: ' + err.message);
+      }
+    }
+    async function confirmDeleteFromEditModal() {
+      if (!editingDocId || !confirm('Pindahkan materi ini ke Trash?')) return;
+      try {
+        await fetch(`/api/docs/${editingDocId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+        closeEditDocModal();
+        loadFolderContents(activeFolderId);
+      } catch (err) {
+        alert('Gagal menghapus materi');
+      }
+    }
+
+    function openLucidePicker(callback) {
+      lucidePickerCallback = callback;
+      document.getElementById('input-lucide-search').value = '';
+      filterLucideIcons('');
+      document.getElementById('modal-lucide-picker').classList.remove('hidden');
+      document.getElementById('input-lucide-search').focus();
+    }
+    function closeLucidePicker() {
+      document.getElementById('modal-lucide-picker').classList.add('hidden');
+      lucidePickerCallback = null;
+    }
+    function renderLucidePickerGrid(iconsList) {
+      const grid = document.getElementById('lucide-grid');
+      grid.innerHTML = '';
+
+      iconsList.forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'flex flex-col items-center justify-center p-2 rounded-lg bg-[#181818] hover:bg-[#282828] border border-[#2a2a2a] hover:border-emerald-500/50 text-white transition group';
+        btn.onclick = () => {
+          if (lucidePickerCallback) lucidePickerCallback(item.name);
+          closeLucidePicker();
+        };
+
+        btn.innerHTML = `
+          <div class="text-emerald-400 group-hover:scale-110 transition my-1">
+            <i data-lucide="${item.name}" class="w-5 h-5"></i>
+          </div>
+          <span class="text-[9px] text-[#888] group-hover:text-white truncate w-full text-center">${item.name}</span>
+        `;
+        grid.appendChild(btn);
+      });
+
+      document.getElementById('lucide-count-text').innerText = `Menampilkan ${iconsList.length} icons`;
+      refreshLucideIcons();
+    }
+    function filterLucideIcons(keyword) {
+      const query = keyword.toLowerCase().trim();
+      if (!query) { renderLucidePickerGrid(LUCIDE_ICONS); return; }
+      const filtered = LUCIDE_ICONS.filter(icon => 
+        icon.name.toLowerCase().includes(query) || 
+        icon.label.toLowerCase().includes(query)
+      );
+      renderLucidePickerGrid(filtered);
+    }
+    function setLucideCategory(cat) {
+      const buttons = document.querySelectorAll('.category-btn');
+      buttons.forEach(b => b.className = 'category-btn bg-[#1a1a1a] text-[#888] hover:text-white px-2 py-0.5 rounded shrink-0');
+      event.target.className = 'category-btn bg-[#292929] text-white px-2 py-0.5 rounded shrink-0';
+
+      if (cat === 'all') renderLucidePickerGrid(LUCIDE_ICONS);
+      else renderLucidePickerGrid(LUCIDE_ICONS.filter(i => i.category === cat));
+    }
+
+    function copyElementText(btn) {
+      const pre = btn.closest('.vscode-window').querySelector('pre');
+      navigator.clipboard.writeText(pre.innerText);
+      btn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Copied!';
+      setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy', 1800);
+    }
+
+    function setupGlobalEvents() {
+      // Upload Screenshot
+      document.getElementById('global-image-uploader').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file || !pendingUploadImageBlock) return;
+
+        const reader = new FileReader();
+        reader.onload = async () => {
+          setSyncStatus('Mengunggah gambar ke Drive...', 'text-amber-500');
+          try {
+            const res = await fetch('/api/upload', {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                fileName: file.name,
+                mimeType: file.type,
+                base64: reader.result,
+              }),
+            });
+            const data = await res.json();
+            if (data.url) {
+              pendingUploadImageBlock.dataset.url = data.url;
+              renderImageBlock(pendingUploadImageBlock, { url: data.url });
+              queueAutoSave();
+            }
+          } catch (err) {
+            alert('Upload gambar gagal!');
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // Upload File Lab
+      document.getElementById('global-lab-uploader').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file || !pendingUploadLabBlock) return;
+
+        const reader = new FileReader();
+        reader.onload = async () => {
+          setSyncStatus('Mengunggah berkas ke Google Drive...', 'text-teal-400');
+          try {
+            const res = await fetch('/api/upload-file', {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                fileName: file.name,
+                mimeType: file.type,
+                base64: reader.result,
+              }),
+            });
+            const data = await res.json();
+            if (data.fileId) {
+              pendingUploadLabBlock.dataset.fileName = data.fileName;
+              pendingUploadLabBlock.dataset.fileId = data.fileId;
+              renderLabFileBlock(pendingUploadLabBlock, {
+                displayName: data.fileName,
+                fileName: data.fileName,
+                fileId: data.fileId
+              });
+              queueAutoSave();
+            }
+          } catch (err) {
+            alert('Upload berkas gagal!');
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#fab-container')) {
+          hideFabMenu();
+          document.getElementById('toc-dropdown').classList.add('hidden');
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          openSearchModal();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          handleSyncOrSave();
+        }
+      });
+    }
+
+    async function changeDocFolder(newFolderId) {
+      if (!isAuthorMode || !currentDoc || currentDoc.folderId === newFolderId) return;
+      try {
+        await fetch(`/api/docs/${currentDoc.driveFileId}/move`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ currentFolderId: currentDoc.folderId, newFolderId }),
+        });
+        currentDoc.folderId = newFolderId;
+        alert('Dokumen berhasil dipindahkan!');
+      } catch (err) {
+        alert('Gagal memindahkan dokumen');
+      }
+    }
+
+    async function deleteDocument(docId, e) {
+      e.stopPropagation();
+      if (!isAuthorMode || !confirm('Hapus materi ini?')) return;
+      try {
+        await fetch(`/api/docs/${docId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+        loadFolderContents(activeFolderId);
+      } catch (err) {
+        alert('Gagal menghapus dokumen');
+      }
+    }
+
+    function openSearchModal() {
+      document.getElementById('modal-search').classList.remove('hidden');
+      document.getElementById('input-global-search').focus();
+    }
+    function closeSearchModal(e) {
+      document.getElementById('modal-search').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

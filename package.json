@@ -1,0 +1,16 @@
+{
+  "name": "notion",
+  "version": "1.0.0",
+  "description": "Custom Notion Workspace for TKJ, Dev & Network Docs with Google Drive Engine",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "googleapis": "^176.0.0"
+  },
+  "license": "ISC"
+}
