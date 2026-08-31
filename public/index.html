@@ -87,7 +87,6 @@
   <section id="view-home" class="flex-1 max-w-2xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
     <div class="mb-6 pb-3 border-b border-[#252525] flex items-center justify-between">
       <div>
-        <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">Folder</h1>
       </div>
       <button onclick="fetchFolders(true)" class="text-xs bg-[#222] hover:bg-[#2c2c2c] text-[#aaa] hover:text-white border border-[#333] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition" title="Refresh Folder Drive">
         <i id="sync-icon" class="fa-solid fa-rotate text-[11px]"></i>
@@ -232,6 +231,9 @@
           </button>
           <button onclick="addBlockFromFab('kbd-shortcut')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-rose-400">
             <i class="fa-solid fa-keyboard w-4"></i> <span>12. Keyboard Shortcut Badge</span>
+          </button>
+          <button onclick="addBlockFromFab('direct-link')" class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#282828] text-left text-sky-400 font-medium">
+            <i class="fa-solid fa-link w-4"></i> <span>13. Direct Link (Tautan Web)</span>
           </button>
         </div>
       </div>
@@ -1120,12 +1122,16 @@
           newBlock.fileName = '';
           newBlock.fileId = '';
           break;
-        case 'kbd-shortcut':
-          newBlock.keys = 'Ctrl + Alt + T';
-          newBlock.desc = '';
-          break;
-        default:
-          newBlock.content = '';
+      case 'kbd-shortcut':
+        newBlock.keys = 'Ctrl + Alt + T';
+        newBlock.desc = '';
+        break;
+      case 'direct-link':
+        newBlock.title = '';
+        newBlock.url = '';
+        break;
+      default:
+        newBlock.content = '';
       }
 
       const dom = createBlockDOM(newBlock);
@@ -1397,20 +1403,69 @@
           return row;
 
         case 'kbd-shortcut':
-          const kbdBox = document.createElement('div');
-          kbdBox.className = 'w-full my-2 p-3 bg-[#1e1e1e] border border-[#2c2c2c] rounded-xl flex items-center justify-between flex-wrap gap-2';
-          kbdBox.innerHTML = `
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-[#888] font-medium">Shortcut:</span>
-              <span class="kbd-key" contenteditable="${isAuthorMode}" data-placeholder="Ctrl + Alt + T">${block.keys || 'Ctrl + Alt + T'}</span>
-            </div>
-            <div contenteditable="${isAuthorMode}" class="kbd-desc text-xs text-[#bbb] outline-none flex-1 min-w-[150px]" data-placeholder="Keterangan fungsi shortcut...">${block.desc || ''}</div>
-          `;
-          kbdBox.addEventListener('input', () => queueAutoSave());
-          row.appendChild(kbdBox);
-          return row;
+        const kbdBox = document.createElement('div');
+        kbdBox.className = 'w-full my-2 p-3 bg-[#1e1e1e] border border-[#2c2c2c] rounded-xl flex items-center justify-between flex-wrap gap-2';
+        kbdBox.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-[#888] font-medium">Shortcut:</span>
+            <span class="kbd-key" contenteditable="${isAuthorMode ? 'true' : 'false'}" data-placeholder="Ctrl + Alt + T">${block.keys || 'Ctrl + Alt + T'}</span>
+          </div>
+          <div contenteditable="${isAuthorMode ? 'true' : 'false'}" class="kbd-desc text-xs text-[#bbb] outline-none flex-1 min-w-[150px]" data-placeholder="Keterangan fungsi shortcut...">${block.desc || ''}</div>
+        `;
+        kbdBox.addEventListener('input', () => queueAutoSave());
+        row.appendChild(kbdBox);
+        return row;
 
-        default:
+      case 'direct-link':
+        const linkBox = document.createElement('div');
+        linkBox.className = 'w-full my-2 p-3 rounded-xl border border-[#2d2d2d] bg-[#1e1e1e] flex items-center justify-between gap-3 shadow-md group/link';
+        const linkUrl = block.url || '';
+        const linkTitle = block.title || '';
+
+        linkBox.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0 flex-1">
+            <div class="w-9 h-9 rounded-lg bg-sky-950/60 border border-sky-800 text-sky-400 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-link text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+              <input type="text" value="${linkTitle}" 
+                     ${isAuthorMode ? '' : 'readonly'}
+                     class="link-title-input text-sm font-semibold bg-transparent text-white border-b border-transparent focus:border-sky-500 outline-none flex-1 placeholder-[#555]" 
+                     placeholder="Judul tautan (misal: Dokumentasi Cisco ID)">
+              <input type="text" value="${linkUrl}" 
+                     ${isAuthorMode ? '' : 'readonly'}
+                     class="link-url-input text-xs font-mono text-[#888] bg-transparent border-b border-transparent focus:border-sky-500 outline-none flex-1 placeholder-[#444]" 
+                     placeholder="https://contoh-link.com">
+            </div>
+          </div>
+          <a href="${linkUrl || '#'}" target="_blank" rel="noopener noreferrer" 
+             onclick="if(!this.getAttribute('href') || this.getAttribute('href')==='#'){ event.preventDefault(); alert('Link URL belum diisi!'); }"
+             class="link-open-btn px-3 py-1.5 rounded-lg bg-[#252525] hover:bg-sky-600 text-[#ccc] hover:text-white text-xs font-medium flex items-center gap-1.5 transition shrink-0 border border-[#333] hover:border-sky-500">
+            <span>Kunjungi</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+        `;
+
+        const titleInput = linkBox.querySelector('.link-title-input');
+        const urlInput = linkBox.querySelector('.link-url-input');
+        const openLinkBtn = linkBox.querySelector('.link-open-btn');
+
+        urlInput.addEventListener('input', () => {
+          let val = urlInput.value.trim();
+          if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+            openLinkBtn.setAttribute('href', 'https://' + val);
+          } else {
+            openLinkBtn.setAttribute('href', val || '#');
+          }
+          queueAutoSave();
+        });
+
+        titleInput.addEventListener('input', () => queueAutoSave());
+
+        row.appendChild(linkBox);
+        return row;
+
+      default:
           contentEl = createEditableEl('p', 'flex-1 text-sm sm:text-base text-[#d4d4d4] leading-relaxed outline-none w-full', 'Ketik teks materi...', block.content);
           attachInputEvents(contentEl);
           row.appendChild(contentEl);
@@ -1739,10 +1794,17 @@
             fileId: r.dataset.fileId || ''
           });
         } else if (type === 'kbd-shortcut') {
-          const keys = r.querySelector('.kbd-key')?.innerText || '';
-          const desc = r.querySelector('.kbd-desc')?.innerText || '';
-          blocks.push({ id, type, keys, desc });
-        } else if (type === 'image') {
+        const keys = r.querySelector('.kbd-key')?.innerText || '';
+        const desc = r.querySelector('.kbd-desc')?.innerText || '';
+        blocks.push({ id, type, keys, desc });
+      } else if (type === 'direct-link') {
+        let url = r.querySelector('.link-url-input')?.value || '';
+        if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+          url = 'https://' + url;
+        }
+        const title = r.querySelector('.link-title-input')?.value || '';
+        blocks.push({ id, type, title, url });
+      } else if (type === 'image') {
           blocks.push({ id, type, url: r.dataset.url || '' });
         } else {
           const editable = r.querySelector('[contenteditable="true"]');
