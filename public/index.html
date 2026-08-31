@@ -1424,15 +1424,12 @@
         const linksList = rawLinks.map(l => typeof l === 'string' ? l : (l.url || ''));
 
         linkBox.innerHTML = `
-          <!-- Judul Sumber di Luar Kotak (Tengah) -->
+          <!-- Judul Sumber di Luar Kotak (Tengah) Tanpa Icon -->
           <div class="w-full max-w-lg mb-2 flex items-center justify-center">
-            <div class="flex items-center gap-2">
-              <i class="fa-solid fa-link text-xs text-sky-400"></i>
-              <input type="text" value="${block.sectionTitle || 'Sumber / Referensi'}" 
-                     ${isAuthorMode ? '' : 'readonly'}
-                     class="link-section-title text-sm font-bold text-white bg-transparent outline-none border-b border-transparent focus:border-sky-500 text-center placeholder-[#666]" 
-                     placeholder="Sumber / Referensi...">
-            </div>
+            <input type="text" value="${block.sectionTitle || 'Sumber / Referensi'}" 
+                   ${isAuthorMode ? '' : 'readonly'}
+                   class="link-section-title text-sm font-bold text-white bg-transparent outline-none border-b border-transparent focus:border-sky-500 text-center placeholder-[#666]" 
+                   placeholder="Sumber / Referensi...">
           </div>
 
           <!-- Kotak Khusus Link Saja -->
