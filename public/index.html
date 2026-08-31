@@ -1418,47 +1418,51 @@
 
       case 'direct-link':
         const linkBox = document.createElement('div');
-        linkBox.className = 'w-full my-2 p-3 rounded-xl border border-[#2d2d2d] bg-[#1e1e1e] flex items-center justify-between gap-3 shadow-md group/link';
+        linkBox.className = 'w-full my-2 p-3.5 rounded-xl border border-[#2d2d2d] bg-[#1e1e1e] flex flex-col gap-2.5 shadow-md';
         const linkUrl = block.url || '';
         const linkTitle = block.title || '';
 
         linkBox.innerHTML = `
-          <div class="flex items-center gap-3 min-w-0 flex-1">
-            <div class="w-9 h-9 rounded-lg bg-sky-950/60 border border-sky-800 text-sky-400 flex items-center justify-center shrink-0">
-              <i class="fa-solid fa-link text-sm"></i>
-            </div>
-            <div class="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-              <input type="text" value="${linkTitle}" 
-                     ${isAuthorMode ? '' : 'readonly'}
-                     class="link-title-input text-sm font-semibold bg-transparent text-white border-b border-transparent focus:border-sky-500 outline-none flex-1 placeholder-[#555]" 
-                     placeholder="Judul tautan (misal: Dokumentasi Cisco ID)">
-              <input type="text" value="${linkUrl}" 
-                     ${isAuthorMode ? '' : 'readonly'}
-                     class="link-url-input text-xs font-mono text-[#888] bg-transparent border-b border-transparent focus:border-sky-500 outline-none flex-1 placeholder-[#444]" 
-                     placeholder="https://contoh-link.com">
-            </div>
+          <!-- Judul di Atas -->
+          <div class="flex items-center gap-2.5">
+            <i class="fa-solid fa-link text-xs text-sky-400 shrink-0"></i>
+            <input type="text" value="${linkTitle}" 
+                   ${isAuthorMode ? '' : 'readonly'}
+                   class="link-title-input text-sm font-semibold text-white bg-transparent outline-none border-b border-transparent focus:border-sky-500 placeholder-[#555] w-full" 
+                   placeholder="Judul Tautan (misal: Dokumentasi Resmi)">
           </div>
-          <a href="${linkUrl || '#'}" target="_blank" rel="noopener noreferrer" 
-             onclick="if(!this.getAttribute('href') || this.getAttribute('href')==='#'){ event.preventDefault(); alert('Link URL belum diisi!'); }"
-             class="link-open-btn px-3 py-1.5 rounded-lg bg-[#252525] hover:bg-sky-600 text-[#ccc] hover:text-white text-xs font-medium flex items-center gap-1.5 transition shrink-0 border border-[#333] hover:border-sky-500">
-            <span>Kunjungi</span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-          </a>
+
+          <!-- Link di Bawah (Berwarna Biru & Bisa Diklik) -->
+          <div class="flex items-center justify-between gap-3 pl-6">
+            <a href="${linkUrl || '#'}" target="_blank" rel="noopener noreferrer" 
+               onclick="if(!this.getAttribute('href') || this.getAttribute('href')==='#'){ event.preventDefault(); alert('Link URL belum diisi!'); }"
+               class="link-anchor text-xs sm:text-sm text-blue-400 hover:underline truncate flex-1 font-mono">
+              ${linkUrl || 'https://...'}
+            </a>
+            ${isAuthorMode ? `
+              <input type="text" value="${linkUrl}" 
+                     class="link-url-input text-xs font-mono text-[#aaa] bg-[#161616] border border-[#333] rounded-lg px-2.5 py-1.5 outline-none focus:border-sky-500 w-44 sm:w-64 shrink-0 placeholder-[#555]" 
+                     placeholder="https://contoh.com">
+            ` : ''}
+          </div>
         `;
 
         const titleInput = linkBox.querySelector('.link-title-input');
         const urlInput = linkBox.querySelector('.link-url-input');
-        const openLinkBtn = linkBox.querySelector('.link-open-btn');
+        const linkAnchor = linkBox.querySelector('.link-anchor');
 
-        urlInput.addEventListener('input', () => {
-          let val = urlInput.value.trim();
-          if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
-            openLinkBtn.setAttribute('href', 'https://' + val);
-          } else {
-            openLinkBtn.setAttribute('href', val || '#');
-          }
-          queueAutoSave();
-        });
+        if (urlInput) {
+          urlInput.addEventListener('input', () => {
+            let val = urlInput.value.trim();
+            let formattedUrl = val;
+            if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+              formattedUrl = 'https://' + val;
+            }
+            linkAnchor.href = formattedUrl || '#';
+            linkAnchor.innerText = val || 'https://...';
+            queueAutoSave();
+          });
+        }
 
         titleInput.addEventListener('input', () => queueAutoSave());
 
@@ -1799,6 +1803,11 @@
         blocks.push({ id, type, keys, desc });
       } else if (type === 'direct-link') {
         let url = r.querySelector('.link-url-input')?.value || '';
+        if (!url) {
+          const anchor = r.querySelector('.link-anchor');
+          url = anchor ? anchor.getAttribute('href') : '';
+          if (url === '#') url = '';
+        }
         if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
           url = 'https://' + url;
         }
