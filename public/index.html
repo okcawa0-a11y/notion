@@ -1416,56 +1416,65 @@
         row.appendChild(kbdBox);
         return row;
 
-      case 'direct-link':
+        case 'direct-link':
         const linkBox = document.createElement('div');
-        linkBox.className = 'w-full my-2 p-3.5 rounded-xl border border-[#2d2d2d] bg-[#1e1e1e] flex flex-col gap-2.5 shadow-md';
-        const linkUrl = block.url || '';
-        const linkTitle = block.title || '';
+        linkBox.className = 'w-full my-3 flex flex-col items-center';
+        
+        const rawLinks = block.links || [''];
+        const linksList = rawLinks.map(l => typeof l === 'string' ? l : (l.url || ''));
 
         linkBox.innerHTML = `
-          <!-- Judul di Atas -->
-          <div class="flex items-center gap-2.5">
-            <i class="fa-solid fa-link text-xs text-sky-400 shrink-0"></i>
-            <input type="text" value="${linkTitle}" 
-                   ${isAuthorMode ? '' : 'readonly'}
-                   class="link-title-input text-sm font-semibold text-white bg-transparent outline-none border-b border-transparent focus:border-sky-500 placeholder-[#555] w-full" 
-                   placeholder="Judul Tautan (misal: Dokumentasi Resmi)">
+          <!-- Judul Sumber di Luar Kotak (Tengah) -->
+          <div class="w-full max-w-lg mb-2 flex items-center justify-center">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-link text-xs text-sky-400"></i>
+              <input type="text" value="${block.sectionTitle || 'Sumber / Referensi'}" 
+                     ${isAuthorMode ? '' : 'readonly'}
+                     class="link-section-title text-sm font-bold text-white bg-transparent outline-none border-b border-transparent focus:border-sky-500 text-center placeholder-[#666]" 
+                     placeholder="Sumber / Referensi...">
+            </div>
           </div>
 
-          <!-- Link di Bawah (Berwarna Biru & Bisa Diklik) -->
-          <div class="flex items-center justify-between gap-3 pl-6">
-            <a href="${linkUrl || '#'}" target="_blank" rel="noopener noreferrer" 
-               onclick="if(!this.getAttribute('href') || this.getAttribute('href')==='#'){ event.preventDefault(); alert('Link URL belum diisi!'); }"
-               class="link-anchor text-xs sm:text-sm text-blue-400 hover:underline truncate flex-1 font-mono">
-              ${linkUrl || 'https://...'}
-            </a>
+          <!-- Kotak Khusus Link Saja -->
+          <div class="w-full bg-[#1e1e1e] border border-[#2d2d2d] rounded-2xl p-3 shadow-lg space-y-2">
+            <div class="link-rows-container space-y-2">
+              ${linksList.map(url => `
+                <div class="link-row-item flex items-center justify-between gap-3 p-2 rounded-xl bg-[#161616] border border-[#252525] group/row">
+                  <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span class="w-2 h-2 rounded-full bg-sky-500 shrink-0 ml-1"></span>
+                    <input type="text" value="${url}" 
+                           ${isAuthorMode ? '' : 'readonly'}
+                           oninput="updateRowLink(this)"
+                           class="link-item-url text-xs sm:text-sm font-mono text-blue-400 hover:underline bg-transparent outline-none placeholder-[#555] flex-1 truncate" 
+                           placeholder="https://...">
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <a href="${url || '#'}" target="_blank" rel="noopener noreferrer" 
+                       onclick="if(!this.getAttribute('href') || this.getAttribute('href')==='#'){ event.preventDefault(); alert('URL belum diisi!'); }"
+                       class="row-visit-btn px-2.5 py-1 rounded-lg bg-[#222] hover:bg-sky-600 text-gray-300 hover:text-white text-xs font-medium flex items-center gap-1 transition border border-[#333]">
+                      <span>Kunjungi</span>
+                      <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                    </a>
+                    ${isAuthorMode ? `
+                      <button type="button" onclick="removeDirectLinkRow(this)" class="opacity-0 group-hover/row:opacity-100 text-[#555] hover:text-red-400 p-1 transition"><i class="fa-solid fa-xmark text-xs"></i></button>
+                    ` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
             ${isAuthorMode ? `
-              <input type="text" value="${linkUrl}" 
-                     class="link-url-input text-xs font-mono text-[#aaa] bg-[#161616] border border-[#333] rounded-lg px-2.5 py-1.5 outline-none focus:border-sky-500 w-44 sm:w-64 shrink-0 placeholder-[#555]" 
-                     placeholder="https://contoh.com">
+              <div class="pt-2 border-t border-[#262626] flex justify-between items-center px-1">
+                <button type="button" onclick="addDirectLinkRow(this)" class="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-plus text-[10px]"></i> <span>Tambah Link Baru</span>
+                </button>
+                <span class="text-[10px] text-[#666]">Daftar Link</span>
+              </div>
             ` : ''}
           </div>
         `;
 
-        const titleInput = linkBox.querySelector('.link-title-input');
-        const urlInput = linkBox.querySelector('.link-url-input');
-        const linkAnchor = linkBox.querySelector('.link-anchor');
-
-        if (urlInput) {
-          urlInput.addEventListener('input', () => {
-            let val = urlInput.value.trim();
-            let formattedUrl = val;
-            if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
-              formattedUrl = 'https://' + val;
-            }
-            linkAnchor.href = formattedUrl || '#';
-            linkAnchor.innerText = val || 'https://...';
-            queueAutoSave();
-          });
-        }
-
-        titleInput.addEventListener('input', () => queueAutoSave());
-
+        linkBox.addEventListener('input', () => queueAutoSave());
         row.appendChild(linkBox);
         return row;
 
@@ -1688,6 +1697,53 @@
       }
     }
 
+function updateRowLink(input) {
+      let val = input.value.trim();
+      if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+        val = 'https://' + val;
+      }
+      const visitBtn = input.closest('.link-row-item').querySelector('.row-visit-btn');
+      visitBtn.setAttribute('href', val || '#');
+    }
+
+    function addDirectLinkRow(btn) {
+      const container = btn.closest('.w-full').querySelector('.link-rows-container');
+      const rowItem = document.createElement('div');
+      rowItem.className = 'link-row-item flex items-center justify-between gap-3 p-2 rounded-xl bg-[#161616] border border-[#252525] group/row';
+      rowItem.innerHTML = `
+        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+          <span class="w-2 h-2 rounded-full bg-sky-500 shrink-0 ml-1"></span>
+          <input type="text" value="" 
+                 oninput="updateRowLink(this)"
+                 class="link-item-url text-xs sm:text-sm font-mono text-blue-400 hover:underline bg-transparent outline-none placeholder-[#555] flex-1 truncate" 
+                 placeholder="https://...">
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a href="#" target="_blank" rel="noopener noreferrer" 
+             onclick="if(!this.getAttribute('href') || this.getAttribute('href')==='#'){ event.preventDefault(); alert('URL belum diisi!'); }" 
+             class="row-visit-btn px-2.5 py-1 rounded-lg bg-[#222] hover:bg-sky-600 text-gray-300 hover:text-white text-xs font-medium flex items-center gap-1 transition border border-[#333]">
+            <span>Kunjungi</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+          </a>
+          <button type="button" onclick="removeDirectLinkRow(this)" class="text-[#555] hover:text-red-400 p-1 transition"><i class="fa-solid fa-xmark text-xs"></i></button>
+        </div>
+      `;
+      container.appendChild(rowItem);
+      rowItem.querySelector('.link-item-url').focus();
+      queueAutoSave();
+    }
+
+    function removeDirectLinkRow(btn) {
+      const rowItem = btn.closest('.link-row-item');
+      const container = rowItem.parentElement;
+      if (container.children.length > 1) {
+        rowItem.remove();
+        queueAutoSave();
+      } else {
+        alert('Minimal harus menyisakan 1 baris link!');
+      }
+    }
+
     function downloadLabFile(fileId, customName, btn) {
       if (!fileId) return;
       const origHtml = btn.innerHTML;
@@ -1801,18 +1857,17 @@
         const keys = r.querySelector('.kbd-key')?.innerText || '';
         const desc = r.querySelector('.kbd-desc')?.innerText || '';
         blocks.push({ id, type, keys, desc });
-      } else if (type === 'direct-link') {
-        let url = r.querySelector('.link-url-input')?.value || '';
-        if (!url) {
-          const anchor = r.querySelector('.link-anchor');
-          url = anchor ? anchor.getAttribute('href') : '';
-          if (url === '#') url = '';
-        }
-        if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
-          url = 'https://' + url;
-        }
-        const title = r.querySelector('.link-title-input')?.value || '';
-        blocks.push({ id, type, title, url });
+     } else if (type === 'direct-link') {
+        const sectionTitle = r.querySelector('.link-section-title')?.value || 'Sumber / Referensi';
+        const links = [];
+        r.querySelectorAll('.link-item-url').forEach(input => {
+          let url = input.value.trim();
+          if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+          }
+          if (url) links.push(url);
+        });
+        blocks.push({ id, type, sectionTitle, links });
       } else if (type === 'image') {
           blocks.push({ id, type, url: r.dataset.url || '' });
         } else {
